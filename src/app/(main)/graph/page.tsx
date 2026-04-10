@@ -274,7 +274,7 @@ export default function GraphPage() {
           zoomOnPinch={true}
         >
           <Background 
-            variant="dots" 
+            variant={"dots" as any} 
             gap={32} 
             size={1.5} 
             color="#f1f5f9" 
