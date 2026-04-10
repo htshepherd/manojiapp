@@ -13,6 +13,11 @@ if (!process.env.DATABASE_URL) {
   throw new Error('[db] 缺少必要环境变量：DATABASE_URL');
 }
 
+if (!process.env.GRAPHIFY_WEBHOOK_SECRET || process.env.GRAPHIFY_WEBHOOK_SECRET.length < 16) {
+  console.error('[db] CRITICAL: GRAPHIFY_WEBHOOK_SECRET 必须配置且长度超过16位');
+  if (process.env.NODE_ENV === 'production') process.exit(1);
+}
+
 export const db = global._pgPool ?? new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 10,

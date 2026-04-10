@@ -9,11 +9,22 @@ import * as crypto from 'crypto';
  * Graphify 编译完成后调用此端点，同步 graph.json 中的 edges 到 PostgreSQL note_links 表
  */
 export async function POST(req: NextRequest) {
-  // 验证 webhook 密钥（使用常量时间比较，防止时序攻击）
-  const secret = req.headers.get('x-graphify-secret') ?? '';
-  const expected = process.env.GRAPHIFY_WEBHOOK_SECRET ?? '';
+  // 验证 webhook 密钥
+  const expected = process.env.GRAPHIFY_WEBHOOK_SECRET;
+  if (!expected || expected.length < 16) {
+    console.error('[CRITICAL] GRAPHIFY_WEBHOOK_SECRET 未配置或强度不足（需至少16位）');
+    return NextResponse.json({ error: '服务器鉴权配置内部错误' }, { status: 500 });
+  }
+
+  const secret = req.headers.get('x-graphify-secret');
+  if (!secret) {
+    return NextResponse.json({ error: '缺少鉴权凭证' }, { status: 401 });
+  }
+
   const a = Buffer.from(secret);
   const b = Buffer.from(expected);
+  
+  // 使用 timingSafeEqual 防止时序攻击
   const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
   if (!valid) {
     return NextResponse.json({ error: '无效的 Webhook 密钥' }, { status: 401 });
@@ -36,49 +47,55 @@ export async function POST(req: NextRequest) {
   }
 
   const edges: any[] = graph.edges || [];
+  if (edges.length === 0) {
+    return NextResponse.json({ success: true, synced: 0, total: 0 });
+  }
+
   let synced = 0;
   let skipped = 0;
 
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  
+  // 优化：批量预查所有涉及的笔记（去重 & 格式检查）
+  const allNoteIds = Array.from(new Set(
+    edges.flatMap(e => [e.source, e.target]).filter(id => UUID_RE.test(id))
+  ));
+
+  const notesResult = await db.query(
+    `SELECT id, user_id FROM notes WHERE id = ANY($1::uuid[]) AND status = 'active'`,
+    [allNoteIds]
+  );
+  const noteOwnerMap = new Map(notesResult.rows.map(r => [r.id, r.user_id]));
 
   for (const edge of edges) {
-    // 基础格式校验：source/target 必须是合法 UUID
-    if (!UUID_RE.test(edge.source) || !UUID_RE.test(edge.target)) {
-      console.warn(`[graphify-sync] 跳过非法 edge（source/target 格式错误）: ${edge.source} -> ${edge.target}`);
+    const { source, target } = edge;
+
+    // 格式校验
+    if (!UUID_RE.test(source) || !UUID_RE.test(target)) {
       skipped++;
       continue;
     }
 
-    // 关联数据校验：校验 source 和 target 属于同一用户，防止跨用户污染
-    const notesCheck = await db.query(
-      `SELECT id, user_id FROM notes WHERE id = ANY($1::uuid[]) AND status = 'active'`,
-      [[edge.source, edge.target]]
-    );
-    if (notesCheck.rows.length !== 2) {
-      // 两条笔记必须都存在
+    // 鉴权校验（批量结果内存化检查）
+    const sourceUser = noteOwnerMap.get(source);
+    const targetUser = noteOwnerMap.get(target);
+
+    if (!sourceUser || !targetUser || sourceUser !== targetUser) {
       skipped++;
-      continue;
-    }
-    const [n1, n2] = notesCheck.rows;
-    if (n1.user_id !== n2.user_id) {
-      // 跨用户关联，直接丢弃
-      console.warn(`[graphify-sync] 检测到跨用户关联，已拒绝: ${edge.source} -> ${edge.target}`);
-      skipped++;
-      continue;
+      continue; // 笔记不存在、不活跃或跨用户关联
     }
 
-    // 跳过用户已手动撤销的链接（user_deleted = true）
+    // 检查用户是否手动撤销过（目前保留点查询，因涉及复合键冲突逻辑）
     const existing = await db.query(
       `SELECT id, user_deleted FROM note_links WHERE note_id = $1 AND target_note_id = $2`,
-      [edge.source, edge.target]
+      [source, target]
     );
 
     if (existing.rows.length > 0 && existing.rows[0].user_deleted) {
       skipped++;
-      continue; // 用户已撤销，不覆盖
+      continue;
     }
 
-    // 将 Graphify 的 relation_confidence 映射到合法的 relation_type
     const relationType = mapRelationType(edge.relationType, edge.relationConfidence);
 
     await db.query(
@@ -93,8 +110,8 @@ export async function POST(req: NextRequest) {
        WHERE note_links.user_deleted = false`,
       [
         edge.id,
-        edge.source,
-        edge.target,
+        source,
+        target,
         relationType,
         mapConfidence(edge.relationConfidence),
         edge.similarityScore || 0,

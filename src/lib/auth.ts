@@ -12,8 +12,9 @@ if (JWT_SECRET.length < 32) {
 }
 
 export function signToken(userId: string): string {
+  // 缩短 JWT 有效期至 7 天，配合数据库 last_active_at 实现滑动会话
   return jwt.sign({ user_id: userId }, JWT_SECRET, {
-    expiresIn: `${process.env.JWT_EXPIRES_DAYS || 30}d`
+    expiresIn: '7d'
   });
 }
 
@@ -24,10 +25,12 @@ export async function requireAuth(req: NextRequest): Promise<string> {
   let payload: any;
   try {
     payload = jwt.verify(token, JWT_SECRET);
-  } catch {
-    throw { status: 401, message: 'Token 无效或已过期' };
+  } catch (err: any) {
+    // JWT 过期或无效
+    throw { status: 401, message: 'Token 已过期或无效' };
   }
 
+  // 查库校验用户状态与最后活动时间（滑动同步）
   const result = await db.query(
     `SELECT last_active_at FROM users WHERE id = $1`,
     [payload.user_id]
@@ -36,10 +39,13 @@ export async function requireAuth(req: NextRequest): Promise<string> {
 
   const lastActive = new Date(result.rows[0].last_active_at);
   const diffMs = Date.now() - lastActive.getTime();
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  if (diffDays > 30) throw { status: 401, message: 'Token 已过期，请重新登录' };
 
-  // 性能优化：last_active_at 写回节流，15 分钟内只写一次，避免读请求全变写请求
+  // 如果超过 30 天未活动，强制重新登录（滑动窗口上限）
+  if (diffMs > 30 * 24 * 60 * 60 * 1000) {
+    throw { status: 401, message: '会话已过期，请重新登录' };
+  }
+
+  // 性能优化：last_active_at 写回节流，15 分钟内只写一次
   if (diffMs > 15 * 60 * 1000) {
     await db.query(
       `UPDATE users SET last_active_at = NOW() WHERE id = $1`,

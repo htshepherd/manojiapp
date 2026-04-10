@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { db } from '@/lib/db';
 import { signToken } from '@/lib/auth';
+import { handleError } from '@/lib/api-response';
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,7 +33,6 @@ export async function POST(req: NextRequest) {
     const token = signToken(user.id);
     return NextResponse.json({ token, user: { id: user.id, account } });
   } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json({ error: '服务器错误' }, { status: 500 });
+    return handleError(error);
   }
 }

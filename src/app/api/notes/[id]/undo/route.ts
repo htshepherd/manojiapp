@@ -1,34 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { deleteVector } from '@/lib/qdrant';
-import { deleteRawNote } from '@/lib/filesystem';
-import { decrementNoteCount } from '@/lib/noteCount';
+import { handleError } from '@/lib/api-response';
 
-export async function DELETE(
+/**
+ * POST /api/notes/[id]/undo
+ * 恢复软删除的笔记
+ */
+export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
     const { id } = await params;
 
     const result = await db.query(
-      `SELECT * FROM notes WHERE id = $1 AND user_id = $2`, [id, userId]
+      `SELECT id, status FROM notes WHERE id = $1 AND user_id = $2`, 
+      [id, userId]
     );
+    
     if (result.rows.length === 0) {
-      return NextResponse.json({ error: '无权操作' }, { status: 403 });
+      return NextResponse.json({ error: '笔记不存在' }, { status: 404 });
     }
-    const note = result.rows[0];
 
-    if (note.raw_file_path) deleteRawNote(note.raw_file_path);
-    if (note.vector_id) await deleteVector(note.vector_id);
+    if (result.rows[0].status === 'active') {
+      return NextResponse.json({ message: '笔记已经是活跃状态' });
+    }
 
-    await db.query(`DELETE FROM notes WHERE id = $1`, [id]);
-    await decrementNoteCount(note.category_id);
+    await db.query(
+      `UPDATE notes SET status = 'active', updated_at = NOW() WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: '笔记已恢复' });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+    return handleError(err);
   }
 }

@@ -1,4 +1,6 @@
-require('dotenv').config({ path: '.env.local' });
+// PM2 生产配置文件
+// 敏感环境变量（DATABASE_URL, JWT_SECRET 等）建议通过系统环境变量提供，
+// 或在启动命令中指定：pm2 start ecosystem.config.cjs --env production
 
 module.exports = {
   apps: [
