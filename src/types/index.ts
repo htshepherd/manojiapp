@@ -33,6 +33,7 @@ export interface Note {
   categoryIcon: string
   title: string
   content: string
+  preview?: string
   tags: string[]
   status: NoteStatus
   links: NoteLink[]

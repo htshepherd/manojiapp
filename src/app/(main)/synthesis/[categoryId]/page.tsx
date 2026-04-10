@@ -70,21 +70,17 @@ export default function SynthesisPage({ params }: { params: Promise<{ categoryId
       <div className="space-y-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
             <div>
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-3">
                     <span className="px-3 py-1 bg-teal-50 text-teal-600 rounded-full text-[10px] font-black uppercase tracking-widest">
-                        {category?.name} · 知识综述
+                        综述
                     </span>
                 </div>
-                <h1 className="text-3xl md:text-5xl font-black text-gray-900 leading-tight tracking-tight uppercase">
-                    {category?.name} · 知识综述
-                </h1>
             </div>
             
             <button 
                 onClick={() => router.push('/categories')}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-gray-900 hover:bg-gray-200 transition-all shadow-sm"
+                className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-gray-900 hover:bg-gray-200 transition-all shadow-sm"
             >
-                <ArrowLeft size={16} />
                 返回分类
             </button>
         </div>
@@ -151,7 +147,6 @@ export default function SynthesisPage({ params }: { params: Promise<{ categoryId
                             <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">沉淀与洞察</h3>
                             {showSavedToast && (
                                 <span className="flex items-center gap-1.5 text-xs text-teal-600 font-black animate-in fade-in slide-in-from-left-2 duration-300">
-                                    <CheckCircle size={16} />
                                     已存档
                                 </span>
                             )}
@@ -161,7 +156,6 @@ export default function SynthesisPage({ params }: { params: Promise<{ categoryId
                                 onClick={() => setIsEditing(true)}
                                 className="flex items-center gap-2 px-5 py-2 bg-white text-teal-600 border border-teal-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-50 transition-all shadow-sm"
                             >
-                                <PenLine size={14} />
                                 修正洞察
                             </button>
                         ) : (
@@ -177,7 +171,7 @@ export default function SynthesisPage({ params }: { params: Promise<{ categoryId
                                     disabled={isSaving}
                                     className="flex items-center gap-2 px-6 py-2 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all shadow-lg shadow-teal-500/20 disabled:bg-gray-300"
                                 >
-                                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : null}
                                     保存存档
                                 </button>
                             </div>

@@ -199,7 +199,7 @@ function buildWikiContent(categoryName: string, notes: any[], allLinks: any[]): 
   // 核心节点列表（关联最多的 Top 5）
   const topNodes = notesWithLinks.slice(0, 5);
   if (topNodes.length > 0) {
-    md += `## 🧠 核心知识节点\n\n`;
+    md += `## 核心知识节点\n\n`;
     md += `> 以下笔记在知识网络中具有最高的关联密度，是该分类的核心支柱。\n\n`;
     for (const note of topNodes) {
       md += `### ${note.title}\n\n`;
@@ -217,7 +217,7 @@ function buildWikiContent(categoryName: string, notes: any[], allLinks: any[]): 
   const sortedByDate = [...notes].sort(
     (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
-  md += `## 📋 全部笔记目录\n\n`;
+  md += `## 全部笔记目录\n\n`;
   for (const note of sortedByDate) {
     const date = new Date(note.created_at).toLocaleDateString('zh-CN');
     const tags = (note.tags || []).map((t: string) => `#${t}`).join(' ');

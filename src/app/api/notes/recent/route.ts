@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { handleError } from '@/lib/api-response';
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,7 +13,8 @@ export async function GET(req: NextRequest) {
       `SELECT id, 
               category_id AS "categoryId", 
               category_name AS "categoryName", 
-              title, content, tags, 
+              title, tags, 
+              LEFT(content, 200) AS preview,
               created_at AS "createdAt",
               updated_at AS "updatedAt"
        FROM notes WHERE user_id = $1 AND status = 'active'
@@ -21,6 +23,6 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json({ notes: result.rows });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+    return handleError(err);
   }
 }

@@ -117,7 +117,7 @@ export default function NotesPage() {
                 </h3>
                 
                 <p className="text-sm text-gray-400 font-medium line-clamp-3 leading-relaxed">
-                  {note.content.replace(/[#*\-\[\]]/g, "").replace(/\n/g, " ")}
+                  {(note.preview || note.content || "").replace(/[#*\-\[\]]/g, "").replace(/\n/g, " ")}
                 </p>
               </div>
 
