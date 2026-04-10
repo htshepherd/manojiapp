@@ -3,7 +3,7 @@ import { db } from './db';
 import { NextRequest } from 'next/server';
 
 // ─── 启动时校验关键环境变量 ────────────────────────────────────────────────────
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET!;
 if (!JWT_SECRET) {
   throw new Error('[auth] 缺少必要环境变量：JWT_SECRET');
 }
