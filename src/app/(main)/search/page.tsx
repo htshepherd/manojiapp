@@ -3,27 +3,27 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDebounce } from 'use-debounce';
-import { Search, History, Loader2, Inbox, Calendar, Tags, ExternalLink } from 'lucide-react';
-import { MOCK_NOTES, MOCK_CATEGORIES, MOCK_SEARCH_RESULTS } from '@/lib/mock';
+import { Search, History, Loader2, Inbox, Tags } from 'lucide-react';
 import { useNotesStore } from '@/store/notes';
-import { SearchResult } from '@/types';
+import { useCategoriesStore } from '@/store/categories';
+import { Note, SearchResult } from '@/types';
 
 export default function SearchPage() {
   const router = useRouter();
-  const { notes } = useNotesStore();
+  const { fetchRecentNotes } = useNotesStore();
+  const { categories, fetchCategories } = useCategoriesStore();
   
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [debouncedQuery] = useDebounce(query, 300);
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [recentNotes, setRecentNotes] = useState<Note[]>([]);
 
-  // 最近笔记 (默认显示最近的4篇)
-  const recentNotes = useMemo(() => {
-    return [...notes]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 4);
-  }, [notes]);
+  useEffect(() => {
+    fetchCategories();
+    fetchRecentNotes(4).then(setRecentNotes);
+  }, [fetchCategories, fetchRecentNotes]);
 
   useEffect(() => {
     const performSearch = async () => {
@@ -34,22 +34,33 @@ export default function SearchPage() {
       }
 
       setIsSearching(true);
-      // 模拟服务器延迟
-      await new Promise(r => setTimeout(r, 500));
-      
-      const searchResults = MOCK_SEARCH_RESULTS(debouncedQuery);
-      setResults(searchResults);
-      setIsSearching(false);
+      try {
+        const token = localStorage.getItem('auth-storage') 
+          ? JSON.parse(localStorage.getItem('auth-storage')!).state.token 
+          : null;
+
+        const res = await fetch('/api/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            query: debouncedQuery,
+            category_id: activeCategory === 'all' ? undefined : activeCategory
+          })
+        });
+        const data = await res.json();
+        setResults(data.results || []);
+      } catch (error) {
+        console.error('Search failed:', error);
+      } finally {
+        setIsSearching(false);
+      }
     };
 
     performSearch();
-  }, [debouncedQuery]);
-
-  // 根据分类过滤结果
-  const filteredResults = useMemo(() => {
-    if (activeCategory === 'all') return results;
-    return results.filter(r => r.categoryName === MOCK_CATEGORIES.find(c => c.id === activeCategory)?.name);
-  }, [results, activeCategory]);
+  }, [debouncedQuery, activeCategory]);
 
   const getSimilarityColor = (score: number) => {
     const percent = score * 100;
@@ -60,7 +71,6 @@ export default function SearchPage() {
 
   return (
     <div className="flex flex-col h-full max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* 搜索框区域 */}
       <div className="space-y-6 sticky top-0 bg-[#fdfdfd]/80 backdrop-blur-md pt-4 pb-6 z-10 border-b border-gray-100/50 -mx-4 px-4 md:mx-0">
         <div className="relative group">
           <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-teal-600 transition-colors">
@@ -76,8 +86,7 @@ export default function SearchPage() {
           />
         </div>
 
-        {/* 分类过滤 Tab */}
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-2">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar px-2">
           <button
             onClick={() => setActiveCategory('all')}
             className={`shrink-0 px-5 py-2 rounded-xl text-sm font-bold transition-all ${
@@ -88,7 +97,7 @@ export default function SearchPage() {
           >
             全部
           </button>
-          {MOCK_CATEGORIES.map(cat => (
+          {categories.map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
@@ -104,17 +113,14 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {/* 结果展示区 */}
       <div className="space-y-6 px-2">
         {isSearching ? (
-          /* Loading 状态 */
           <div className="space-y-6 animate-pulse">
             {[1, 2, 3].map(i => (
               <div key={i} className="h-44 bg-gray-50 rounded-3xl border border-gray-100 shadow-sm" />
             ))}
           </div>
         ) : query.trim() === '' ? (
-          /* 初始状态 - 最近笔记 */
           <div className="space-y-8">
             <div className="flex items-center gap-3 text-gray-900 font-extrabold px-2">
               <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
@@ -135,19 +141,18 @@ export default function SearchPage() {
                       {new Date(note.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <h4 className="font-black text-gray-900 group-hover:text-teal-600 transition-colors line-clamp-2 leading-tight text-lg">{note.title}</h4>
+                  <h4 className="font-black text-gray-900 group-hover:text-teal-600 transition-colors truncate leading-tight text-lg">{note.title}</h4>
                 </div>
               ))}
             </div>
           </div>
-        ) : filteredResults.length > 0 ? (
-          /* 搜索结果 */
+        ) : results.length > 0 ? (
           <div className="space-y-8">
             <div className="flex items-center justify-between px-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                共找到 {filteredResults.length} 条结果
+                共找到 {results.length} 条结果
             </div>
             <div className="space-y-6">
-              {filteredResults.map(result => (
+              {results.map(result => (
                 <div 
                   key={result.noteId} 
                   onClick={() => router.push(`/notes/${result.noteId}`)}
@@ -163,7 +168,7 @@ export default function SearchPage() {
                       </div>
                     </div>
 
-                    <h3 className="text-2xl font-black text-gray-900 group-hover:text-teal-600 transition-colors leading-tight tracking-tight">
+                    <h3 className="text-2xl font-black text-gray-900 group-hover:text-teal-600 transition-colors leading-tight tracking-tight truncate">
                       {result.title}
                     </h3>
 
@@ -181,17 +186,14 @@ export default function SearchPage() {
                     </div>
                   </div>
 
-                  <div className="absolute right-8 bottom-8">
-                    <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-teal-600 group-hover:text-white group-hover:rotate-45 transition-all duration-500 shadow-inner text-xs font-black">
-                      查看
-                    </div>
+                  <div className="absolute right-8 bottom-8 text-xs font-black text-gray-400 group-hover:text-teal-600 transition-colors">
+                    查看详情 →
                   </div>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          /* 无结果 */
           <div className="py-24 flex flex-col items-center justify-center text-center space-y-6 bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200">
             <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-xl">
               <Inbox size={40} className="text-gray-200" />

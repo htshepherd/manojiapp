@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS migrations_history (
+  id SERIAL PRIMARY KEY,
+  filename VARCHAR(200) UNIQUE NOT NULL,
+  executed_at TIMESTAMP DEFAULT NOW()
+);

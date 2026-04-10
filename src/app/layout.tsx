@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "你的 AI 知识库",
 };
 
+import RootInit from "@/components/RootInit";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -13,10 +15,13 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
-      className="h-full antialiased"
+      lang="zh-CN"
+      className="h-full antialiased font-sans"
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-slate-50">
+        <RootInit />
+        {children}
+      </body>
     </html>
   );
 }

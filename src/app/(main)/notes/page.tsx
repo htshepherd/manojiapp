@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Plus, Inbox, ArrowRight } from "lucide-react";
-import { MOCK_NOTES, MOCK_CATEGORIES } from "@/lib/mock";
+import { useNotesStore } from "@/store/notes";
+import { useCategoriesStore } from "@/store/categories";
 import { CATEGORY_COLORS } from "@/lib/relation-config";
 
 const getColorForCategory = (categoryId: string) => {
+  if (!categoryId) return "#3b82f6";
   const num = categoryId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return CATEGORY_COLORS[num % CATEGORY_COLORS.length] || "#3b82f6";
 };
 
 const timeAgo = (dateString: string) => {
+  if (!dateString) return "";
   const date = new Date(dateString);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -25,14 +28,21 @@ const timeAgo = (dateString: string) => {
 
 export default function NotesPage() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const { notes, fetchNotes, isLoading } = useNotesStore();
+  const { categories, fetchCategories } = useCategoriesStore();
 
-  const filteredNotes = MOCK_NOTES.filter(
-    (note) => activeCategory === "all" || note.categoryId === activeCategory
-  );
+  useEffect(() => {
+    fetchCategories();
+    fetchNotes(activeCategory === "all" ? undefined : activeCategory);
+  }, [activeCategory, fetchNotes, fetchCategories]);
+
+  // 为了极致体验，本地预过滤一次（虽然接口已过滤）
+  const displayedNotes = useMemo(() => {
+    return activeCategory === "all" ? notes : notes.filter(n => n.categoryId === activeCategory);
+  }, [notes, activeCategory]);
 
   return (
     <div className="flex flex-col h-full space-y-10 animate-in fade-in duration-500">
-      {/* 顶部标题区 */}
       <div className="flex items-end justify-between px-2">
         <div className="space-y-1">
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">全部笔记</h1>
@@ -47,8 +57,7 @@ export default function NotesPage() {
         </Link>
       </div>
 
-      {/* 分类筛选 Tab */}
-      <div className="flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide px-2">
+      <div className="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar px-2">
         <button
           onClick={() => setActiveCategory("all")}
           className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border whitespace-nowrap ${
@@ -59,7 +68,7 @@ export default function NotesPage() {
         >
           全部
         </button>
-        {MOCK_CATEGORIES.map((cat) => (
+        {categories.map((cat) => (
           <button
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
@@ -74,10 +83,15 @@ export default function NotesPage() {
         ))}
       </div>
 
-      {/* 笔记卡片网格 */}
-      {filteredNotes.length > 0 ? (
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-2">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="h-72 bg-gray-100 rounded-[40px] animate-pulse" />
+          ))}
+        </div>
+      ) : displayedNotes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-2 pb-10">
-          {filteredNotes.map((note) => (
+          {displayedNotes.map((note) => (
             <Link
               key={note.id}
               href={`/notes/${note.id}`}
@@ -109,7 +123,7 @@ export default function NotesPage() {
 
               <div className="mt-8 pt-6 border-t border-gray-50 flex items-center justify-between">
                 <div className="flex flex-wrap gap-2">
-                    {note.tags.slice(0, 2).map(tag => (
+                    {note.tags?.slice(0, 2).map(tag => (
                         <span key={tag} className="text-[9px] font-black text-gray-700 uppercase tracking-widest">#{tag}</span>
                     ))}
                 </div>
@@ -121,7 +135,6 @@ export default function NotesPage() {
           ))}
         </div>
       ) : (
-        /* 空状态 */
         <div className="flex-1 flex flex-col items-center justify-center py-24 text-center bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200 mx-2">
           <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-xl mb-6">
             <Inbox className="w-10 h-10 text-gray-200" />

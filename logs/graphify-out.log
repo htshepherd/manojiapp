@@ -1,0 +1,25 @@
+[Graphify 2026-04-10T08:36:40.126Z] Graphify Service 启动
+[Graphify 2026-04-10T08:36:40.128Z] 监听目录: /Users/kkid/Documents/LLM/manoji/manojiapp/notes/raw
+[Graphify 2026-04-10T08:36:40.128Z] 输出目录: /Users/kkid/Documents/LLM/manoji/manojiapp/graphify-out
+[Graphify 2026-04-10T08:36:40.128Z] Webhook: http://localhost:3000/api/internal/graphify-sync
+[Graphify 2026-04-10T08:36:40.128Z] 开始编译知识图谱...
+[Graphify 2026-04-10T08:36:40.336Z] 拉取到 3 篇笔记，6 条连线
+[Graphify 2026-04-10T08:36:40.337Z] graph.json 已生成
+[Graphify 2026-04-10T08:36:40.371Z] Wiki 综述已生成: 产品设计分析.md (3 篇)
+[Graphify 2026-04-10T08:36:40.637Z] Webhook response: 200
+[Graphify 2026-04-10T08:36:40.637Z] 编译完成 ✅ (3 节点, 6 边)
+[Graphify 2026-04-10T08:36:40.639Z] 文件监听已启动，等待变化...
+[Graphify 2026-04-10T09:13:09.137Z] 检测到变化（rename: 产品设计分析/53ed4d91-5429-4ae8-961c-939a62790ae4.md），3秒后触发编译...
+[Graphify 2026-04-10T09:13:12.151Z] 开始编译知识图谱...
+[Graphify 2026-04-10T09:13:12.411Z] 拉取到 4 篇笔记，9 条连线
+[Graphify 2026-04-10T09:13:12.412Z] graph.json 已生成
+[Graphify 2026-04-10T09:13:12.415Z] Wiki 综述已生成: 产品设计分析.md (4 篇)
+[Graphify 2026-04-10T09:13:12.668Z] Webhook response: 200
+[Graphify 2026-04-10T09:13:12.668Z] 编译完成 ✅ (4 节点, 9 边)
+[Graphify 2026-04-10T09:14:26.968Z] 检测到变化（rename: 产品设计分析/00edf187-a368-447f-8182-74d661880fb6.md），3秒后触发编译...
+[Graphify 2026-04-10T09:14:29.973Z] 开始编译知识图谱...
+[Graphify 2026-04-10T09:14:30.306Z] 拉取到 5 篇笔记，13 条连线
+[Graphify 2026-04-10T09:14:30.307Z] graph.json 已生成
+[Graphify 2026-04-10T09:14:30.307Z] Wiki 综述已生成: 产品设计分析.md (5 篇)
+[Graphify 2026-04-10T09:14:30.711Z] Webhook response: 200
+[Graphify 2026-04-10T09:14:30.711Z] 编译完成 ✅ (5 节点, 13 边)

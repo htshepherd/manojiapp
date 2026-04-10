@@ -1,0 +1,202 @@
+{
+  "generated_at": "2026-04-10T09:14:30.306Z",
+  "node_count": 5,
+  "edge_count": 13,
+  "nodes": [
+    {
+      "id": "00edf187-a368-447f-8182-74d661880fb6",
+      "title": "宠物垂直社交有没有机会？",
+      "categoryId": "1663b683-6d7e-4955-8cce-f20f2ffddab7",
+      "categoryName": "产品设计分析",
+      "tags": [
+        "垂直社交",
+        "冷启动",
+        "社区产品",
+        "用户动机",
+        "刚性场景"
+      ],
+      "linkCount": 4,
+      "createdAt": "2026-04-10T09:14:26.932Z"
+    },
+    {
+      "id": "53ed4d91-5429-4ae8-961c-939a62790ae4",
+      "title": "抖音做兴趣圈子有没有机会？",
+      "categoryId": "1663b683-6d7e-4955-8cce-f20f2ffddab7",
+      "categoryName": "产品设计分析",
+      "tags": [
+        "社区产品",
+        "冷启动",
+        "抖音",
+        "圈子",
+        "聊天室",
+        "社交产品"
+      ],
+      "linkCount": 4,
+      "createdAt": "2026-04-10T09:13:09.080Z"
+    },
+    {
+      "id": "7066f09b-234b-4931-bafa-a009829fcbdc",
+      "title": "啫喱之后，社交产品的破局点在哪里？",
+      "categoryId": "1663b683-6d7e-4955-8cce-f20f2ffddab7",
+      "categoryName": "产品设计分析",
+      "tags": [
+        "社交产品",
+        "冷启动",
+        "陌生人社交",
+        "熟人社交",
+        "关系升级"
+      ],
+      "linkCount": 6,
+      "createdAt": "2026-04-10T07:06:57.727Z"
+    },
+    {
+      "id": "269b4bf6-dafb-46be-a788-1e749a541495",
+      "title": "Soul 兴趣群为什么活得下去——陌生人社交的群逻辑",
+      "categoryId": "1663b683-6d7e-4955-8cce-f20f2ffddab7",
+      "categoryName": "产品设计分析",
+      "tags": [
+        "陌生人社交",
+        "群产品",
+        "Soul",
+        "社交动机",
+        "冷启动"
+      ],
+      "linkCount": 6,
+      "createdAt": "2026-04-10T07:05:59.504Z"
+    },
+    {
+      "id": "a4f14a33-6a58-4e07-9b3c-509d2c237a85",
+      "title": "Locket Widget 为什么能持续霸榜？亲密关系社交的破局逻辑",
+      "categoryId": "1663b683-6d7e-4955-8cce-f20f2ffddab7",
+      "categoryName": "产品设计分析",
+      "tags": [
+        "亲密关系社交",
+        "产品机制",
+        "冷启动",
+        "场景设计",
+        "Locket Widget"
+      ],
+      "linkCount": 6,
+      "createdAt": "2026-04-10T07:03:13.377Z"
+    }
+  ],
+  "edges": [
+    {
+      "id": "a58cab14-cdb5-43a5-8570-ce6b5a41f1f8",
+      "source": "7066f09b-234b-4931-bafa-a009829fcbdc",
+      "target": "a4f14a33-6a58-4e07-9b3c-509d2c237a85",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.82535034,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "587f3ddf-7d1e-4e20-ab17-b068a2d6c3ad",
+      "source": "7066f09b-234b-4931-bafa-a009829fcbdc",
+      "target": "269b4bf6-dafb-46be-a788-1e749a541495",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.8191545,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "f296b27e-0925-434f-b6cc-49794e82c21f",
+      "source": "269b4bf6-dafb-46be-a788-1e749a541495",
+      "target": "7066f09b-234b-4931-bafa-a009829fcbdc",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.7790449,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "095fc818-737d-43c7-8d4b-91b4d159558e",
+      "source": "269b4bf6-dafb-46be-a788-1e749a541495",
+      "target": "a4f14a33-6a58-4e07-9b3c-509d2c237a85",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.7415366,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "2f77fe41-d17d-4e0f-962a-f200ede9aec8",
+      "source": "a4f14a33-6a58-4e07-9b3c-509d2c237a85",
+      "target": "7066f09b-234b-4931-bafa-a009829fcbdc",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.8076086,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "e2314824-64c1-419d-9282-7d3f701a6aa2",
+      "source": "a4f14a33-6a58-4e07-9b3c-509d2c237a85",
+      "target": "269b4bf6-dafb-46be-a788-1e749a541495",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.7139803,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "2c92b8b9-a59a-42ef-94cb-e17f3bf9548d",
+      "source": "53ed4d91-5429-4ae8-961c-939a62790ae4",
+      "target": "269b4bf6-dafb-46be-a788-1e749a541495",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.76653445,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "ccdcb360-be86-4834-9754-8089d6d0fe0f",
+      "source": "53ed4d91-5429-4ae8-961c-939a62790ae4",
+      "target": "a4f14a33-6a58-4e07-9b3c-509d2c237a85",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.75800294,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "2691f3cc-97f9-4c51-b3f8-26c6a3d3778a",
+      "source": "53ed4d91-5429-4ae8-961c-939a62790ae4",
+      "target": "7066f09b-234b-4931-bafa-a009829fcbdc",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.7438492,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "faf4c9f5-29d5-4803-8145-ef2b31f5cd10",
+      "source": "00edf187-a368-447f-8182-74d661880fb6",
+      "target": "7066f09b-234b-4931-bafa-a009829fcbdc",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.7437828,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "1bcc23d6-47c1-483e-a224-36d8b271b418",
+      "source": "00edf187-a368-447f-8182-74d661880fb6",
+      "target": "53ed4d91-5429-4ae8-961c-939a62790ae4",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.7322501,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "96625cd9-4e07-404c-a391-6607ad1735f0",
+      "source": "00edf187-a368-447f-8182-74d661880fb6",
+      "target": "269b4bf6-dafb-46be-a788-1e749a541495",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.69589496,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "27cf64dc-6588-448e-80a4-0b0517b620ce",
+      "source": "00edf187-a368-447f-8182-74d661880fb6",
+      "target": "a4f14a33-6a58-4e07-9b3c-509d2c237a85",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.679529,
+      "sourceCategoryName": "产品设计分析"
+    }
+  ]
+}

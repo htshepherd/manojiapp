@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { useAuthStore } from './auth';
 
 export interface PromptTemplate {
   id: string;
@@ -11,73 +11,111 @@ export interface PromptTemplate {
 
 interface TemplatesState {
   templates: PromptTemplate[];
-  addTemplate: (template: Omit<PromptTemplate, 'id'>) => void;
-  updateTemplate: (id: string, template: Partial<Omit<PromptTemplate, 'id'>>) => void;
-  deleteTemplate: (id: string) => void;
+  isLoading: boolean;
+  fetchTemplates: () => Promise<void>;
+  addTemplate: (template: Omit<PromptTemplate, 'id'>) => Promise<boolean>;
+  updateTemplate: (id: string, template: Partial<Omit<PromptTemplate, 'id'>>) => Promise<boolean>;
+  deleteTemplate: (id: string) => Promise<boolean>;
 }
 
-const DEFAULT_TEMPLATES: PromptTemplate[] = [
-  {
-    id: 'tpl-1',
-    name: "通用摘要",
-    type: "通用类",
-    promptTemplate: "请将以下内容提炼为简洁的摘要，突出核心论点和结论。",
-    description: "适用于大部分通用型笔记和阅读心得。"
-  },
-  {
-    id: 'tpl-2',
-    name: "案例研究",
-    type: "职场类",
-    promptTemplate: "请从以下内容中提取项目背景、核心挑战、解决方案及最终成果。",
-    description: "适用于整理沉淀工作案例或深度调研。"
-  },
-  {
-    id: 'tpl-3',
-    name: "架构分析",
-    type: "技术类",
-    promptTemplate: "请提取其中的关键技术名词、架构组件及其依赖关系。",
-    description: "适用于分析复杂的系统架构或底层逻辑。"
-  },
-  {
-    id: 'tpl-4',
-    name: "灵感捕捉",
-    type: "创意类",
-    promptTemplate: "请捕捉这段文字中的闪光点，并提供至少两个可能的应用切入点。",
-    description: "适用于整理随手记录的灵感片段。"
-  },
-  {
-    id: 'tpl-5',
-    name: "概念拆解",
-    type: "学术类",
-    promptTemplate: "请将这段文本拆解为独立的知识点，并为每个点提供一个简单的定义。",
-    description: "适用于整理大部头书籍或深度课程的笔记。"
-  }
-];
+export const useTemplatesStore = create<TemplatesState>((set, get) => ({
+  templates: [],
+  isLoading: false,
 
-export const useTemplatesStore = create<TemplatesState>()(
-  persist(
-    (set) => ({
-      templates: DEFAULT_TEMPLATES,
-      addTemplate: (template) =>
-        set((state) => ({
-          templates: [
-            ...state.templates,
-            { ...template, id: `tpl-${Date.now()}` },
-          ],
-        })),
-      updateTemplate: (id, updatedTemplate) =>
-        set((state) => ({
-          templates: state.templates.map((tpl) =>
-            tpl.id === id ? { ...tpl, ...updatedTemplate } : tpl
-          ),
-        })),
-      deleteTemplate: (id) =>
-        set((state) => ({
-          templates: state.templates.filter((tpl) => tpl.id !== id),
-        })),
-    }),
-    {
-      name: 'templates-storage',
+  fetchTemplates: async () => {
+    const token = useAuthStore.getState().token;
+    set({ isLoading: true });
+    try {
+      const res = await fetch('/api/templates', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      // Map backend snake_case to frontend camelCase
+      const mapped = (data.templates || []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        type: t.type,
+        promptTemplate: t.prompt_template,
+        description: t.description
+      }));
+      set({ templates: mapped, isLoading: false });
+    } catch {
+      set({ isLoading: false });
     }
-  )
-);
+  },
+
+  addTemplate: async (tpl) => {
+    const token = useAuthStore.getState().token;
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: tpl.name,
+          type: tpl.type,
+          prompt_template: tpl.promptTemplate,
+          description: tpl.description
+        })
+      });
+      if (!res.ok) return false;
+      await get().fetchTemplates(); // Refresh list to get real ID
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  updateTemplate: async (id, tpl) => {
+    const token = useAuthStore.getState().token;
+    try {
+      const res = await fetch(`/api/templates/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: tpl.name,
+          type: tpl.type,
+          prompt_template: tpl.promptTemplate,
+          description: tpl.description
+        })
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      const updated = data.template;
+      set({
+        templates: get().templates.map(t => 
+          t.id === id ? {
+            ...t,
+            name: updated.name,
+            type: updated.type,
+            promptTemplate: updated.prompt_template,
+            description: updated.description
+          } : t
+        )
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  deleteTemplate: async (id) => {
+    const token = useAuthStore.getState().token;
+    try {
+      const res = await fetch(`/api/templates/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) return false;
+      set({ templates: get().templates.filter(t => t.id !== id) });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+}));

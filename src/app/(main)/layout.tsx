@@ -26,7 +26,7 @@ export default function MainLayout({
   if (!mounted || !isLoggedIn) return null;
 
   const navItems = [
-    { label: "搜索", href: "/search", icon: <Search size={22} /> },
+    { label: "语义搜索", href: "/search", icon: <Search size={22} /> },
     { label: "记录笔记", href: "/notes/new", icon: <PenSquare size={22} /> },
     { label: "全部笔记", href: "/notes", icon: <BookText size={22} /> },
     { label: "分类管理", href: "/categories", icon: <FolderTree size={22} /> },

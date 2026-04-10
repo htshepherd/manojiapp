@@ -9,10 +9,11 @@ import ReactFlow, {
   MarkerType,
   ConnectionMode
 } from 'react-flow-renderer';
-import { MOCK_GRAPH, MOCK_NOTES, MOCK_CATEGORIES } from '@/lib/mock';
-import { RELATION_CONFIG, CATEGORY_COLORS } from '@/lib/relation-config';
+import { useAuthStore } from '@/store/auth';
+import { useCategoriesStore } from '@/store/categories';
+import { RELATION_CONFIG } from '@/lib/relation-config';
 import { KnowledgeNode } from '@/components/features/KnowledgeNode';
-import { Network, X, ArrowRight, Maximize2, Filter, AlertCircle } from 'lucide-react';
+import { Network, X, ArrowRight, Maximize2, Loader2, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const nodeTypes = {
@@ -21,172 +22,196 @@ const nodeTypes = {
 
 export default function GraphPage() {
   const router = useRouter();
+  const token = useAuthStore(state => state.token);
+  const { categories, fetchCategories } = useCategoriesStore();
   
   // States
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [selectedNote, setSelectedNote] = useState<any | null>(null);
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
-  
-  // Transform Mock to RF Data
-  const initialNodes = useMemo(() => {
-    return MOCK_GRAPH.nodes.map((node, index) => ({
-      id: node.id,
-      type: 'knowledge',
-      position: { 
-        x: Math.cos(index * (2 * Math.PI / MOCK_GRAPH.nodes.length)) * 250 + 400,
-        y: Math.sin(index * (2 * Math.PI / MOCK_GRAPH.nodes.length)) * 250 + 300
-      },
-      data: { 
-        ...node, 
-        isSelected: false 
-      },
-    }));
-  }, []);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const initialEdges = useMemo(() => {
-    return MOCK_GRAPH.edges.map((edge, index) => {
-      const config = RELATION_CONFIG[edge.relationType as keyof typeof RELATION_CONFIG];
-      const isUncertain = edge.relationConfidence === 'uncertain';
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  const fetchGraph = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const url = filterCategoryId === 'all' ? '/api/graph' : `/api/graph?category_id=${filterCategoryId}`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
       
-      return {
-        id: `e-${edge.source}-${edge.target}`,
-        source: edge.source,
-        target: edge.target,
-        label: `${Math.round(edge.similarityScore * 100)}%`,
-        labelStyle: { fill: config.color, fontWeight: 700, fontSize: 10 },
-        style: { 
-            stroke: isUncertain ? '#cbd5e1' : config.color, 
-            strokeWidth: 2,
-            strokeDasharray: isUncertain ? '5,5' : '0'
-        },
-        animated: !isUncertain,
-        arrowHeadType: MarkerType.ArrowClosed,
-      };
-    });
-  }, []);
+      const rfNodes = (data.nodes || []).map((node: any, index: number) => {
+          // 简单的力导向初始布局
+          const angle = index * (2 * Math.PI / data.nodes.length);
+          const radius = 250 + Math.random() * 50;
+          return {
+            id: node.id,
+            type: 'knowledge',
+            position: { 
+                x: Math.cos(angle) * radius + 400,
+                y: Math.sin(angle) * radius + 300
+            },
+            data: { 
+                ...node, 
+                isSelected: false 
+            },
+          };
+      });
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+      const rfEdges = (data.edges || []).map((edge: any) => {
+        // 兼容 camelCase 和 snake_case 两种字段命名
+        const relationType = edge.relationType || edge.relation_type;
+        const confidence = edge.relationConfidence || edge.relation_confidence;
+        const score = edge.similarityScore ?? edge.similarity_score ?? 0;
 
-  // Filter Logic
-  useEffect(() => {
-    if (filterCategoryId === 'all') {
-      setNodes(initialNodes);
-      setEdges(initialEdges);
-    } else {
-      const filteredNodes = initialNodes.filter(n => n.data.categoryId === filterCategoryId);
-      const filteredIds = new Set(filteredNodes.map(n => n.id));
-      setNodes(filteredNodes);
-      setEdges(initialEdges.filter(e => filteredIds.has(e.source) && filteredIds.has(e.target)));
+        const config = RELATION_CONFIG[relationType as keyof typeof RELATION_CONFIG] || { color: '#94a3b8' };
+        const isUncertain = confidence === 'uncertain';
+        
+        return {
+          id: `e-${edge.source}-${edge.target}`,
+          source: edge.source,
+          target: edge.target,
+          label: `${Math.round(score * 100)}%`,
+          labelStyle: { fill: config.color, fontWeight: 800, fontSize: 10 },
+          style: { 
+              stroke: isUncertain ? '#cbd5e1' : config.color, 
+              strokeWidth: 2,
+              strokeDasharray: isUncertain ? '5,5' : '0'
+          },
+          animated: !isUncertain && score > 0.8,
+          arrowHeadType: MarkerType.ArrowClosed,
+        };
+      });
+
+      setNodes(rfNodes);
+      setEdges(rfEdges);
+    } catch (err) {
+      console.error('Fetch graph failed:', err);
+    } finally {
+      setIsLoading(false);
     }
-  }, [filterCategoryId, initialNodes, initialEdges, setNodes, setEdges]);
+  }, [filterCategoryId, token, setNodes, setEdges]);
+
+  useEffect(() => {
+    fetchCategories();
+    if (token) fetchGraph();
+  }, [token, filterCategoryId, fetchGraph, fetchCategories]);
 
   // Interaction
-  const onNodeClick = useCallback((event: any, node: any) => {
+  const onNodeClick = useCallback(async (event: any, node: any) => {
     setSelectedNoteId(node.id);
     setNodes((nds) => nds.map((n) => ({
       ...n,
       data: { ...n.data, isSelected: n.id === node.id }
     })));
-  }, [setNodes]);
+
+    // 异步拉取详细信息
+    try {
+        const res = await fetch(`/api/notes/${node.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const d = await res.json();
+        setSelectedNote(d.note);
+    } catch (err) {
+        console.error(err);
+    }
+  }, [setNodes, token]);
 
   const onPaneClick = useCallback(() => {
     setSelectedNoteId(null);
+    setSelectedNote(null);
     setNodes((nds) => nds.map((n) => ({
       ...n,
       data: { ...n.data, isSelected: false }
     })));
   }, [setNodes]);
 
-  const selectedNote = useMemo(() => 
-    MOCK_NOTES.find(n => n.id === selectedNoteId), 
-    [selectedNoteId]
-  );
-
-  if (MOCK_GRAPH.nodes.length === 0) {
-    return (
-        <div className="flex flex-col items-center justify-center h-[80vh] space-y-4">
-            <Network size={64} className="text-gray-200" />
-            <p className="text-gray-500">暂无笔记，写入第一篇后图谱将自动生成</p>
-        </div>
-    );
-  }
-
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden relative w-full">
+    <div className="flex h-screen bg-white overflow-hidden relative w-full font-sans">
       {/* 侧边预览面板 */}
       <div 
-        className={`absolute right-0 top-0 bottom-0 w-full md:w-[350px] bg-white border-l border-gray-100 shadow-2xl z-30 transition-transform duration-500 transform ${
+        className={`fixed right-0 top-0 bottom-0 w-full md:w-[400px] bg-white border-l border-gray-100 shadow-2xl z-40 transition-transform duration-500 ease-out transform ${
           selectedNoteId ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        {selectedNote && (
+        {selectedNote ? (
           <div className="h-full flex flex-col">
-            <div className="p-6 border-b flex items-center justify-between">
-              <span className="text-xs font-black uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                笔记预览
+            <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase text-teal-600 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
+                知识节点预览
               </span>
               <button 
                 onClick={() => setSelectedNoteId(null)}
-                className="p-2 hover:bg-gray-100 rounded-full text-gray-400"
+                className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                    <span className="text-xl">{selectedNote.categoryIcon}</span>
-                    <span className="text-sm font-bold text-gray-400">{selectedNote.categoryName}</span>
+                    <span className="text-[10px] bg-gray-900 text-white px-3 py-1 rounded-full font-black uppercase tracking-wider">{selectedNote.category_name}</span>
                 </div>
-                <h2 className="text-2xl font-black text-gray-900 leading-tight">
+                <h2 className="text-3xl font-black text-gray-900 leading-tight tracking-tight">
                   {selectedNote.title}
                 </h2>
               </div>
 
-              <div className="text-sm text-gray-500 leading-relaxed line-clamp-[12]">
+              <div className="text-sm text-gray-500 leading-relaxed line-clamp-[15] font-medium italic">
                 {selectedNote.content.replace(/[#\-\[\]]/g, '')}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {selectedNote.tags?.map((t: string) => (
+                    <span key={t} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-full">#{t}</span>
+                ))}
               </div>
             </div>
 
-            <div className="p-6 border-t bg-gray-50">
+            <div className="p-8 border-t border-gray-50 bg-gray-50/50">
               <button 
                 onClick={() => router.push(`/notes/${selectedNote.id}`)}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
+                className="w-full flex items-center justify-center gap-3 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-teal-600 transition-all shadow-xl active:scale-95"
               >
                 查看完整笔记
                 <ArrowRight size={18} />
               </button>
             </div>
           </div>
+        ) : (
+            <div className="h-full flex items-center justify-center">
+                <Loader2 className="animate-spin text-teal-600" size={32} />
+            </div>
         )}
       </div>
 
-      {/* 画布区域 */}
       <div className="flex-1 relative">
-        {/* 控制工具栏 */}
-        <div className="absolute top-6 left-6 right-6 z-20 flex flex-wrap gap-4 items-center justify-between pointer-events-none">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 pointer-events-auto max-w-[calc(100vw-450px)]">
+        <div className="absolute top-8 left-8 right-8 z-20 flex flex-wrap gap-4 items-center justify-between pointer-events-none">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 pointer-events-auto max-w-[calc(100vw-500px)]">
                 <button 
                   onClick={() => setFilterCategoryId('all')}
-                  className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${
+                  className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${
                     filterCategoryId === 'all' 
-                      ? 'bg-gray-900 border-gray-900 text-white shadow-lg' 
-                      : 'bg-white/70 backdrop-blur-md border-gray-100 text-gray-400 hover:border-gray-200'
+                      ? 'bg-gray-900 border-gray-900 text-white shadow-2xl' 
+                      : 'bg-white/80 backdrop-blur-md border-gray-100 text-gray-400 hover:border-gray-200 shadow-sm'
                   }`}
                 >
-                  全部
+                  全部领域
                 </button>
-                {MOCK_CATEGORIES.map(c => {
+                {categories.map(c => {
                   const isActive = filterCategoryId === c.id;
                   return (
                     <button
                       key={c.id}
                       onClick={() => setFilterCategoryId(c.id)}
-                      className={`flex items-center px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${
+                      className={`flex items-center px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${
                         isActive 
-                          ? 'bg-teal-600 border-teal-600 text-white shadow-lg shadow-teal-500/20' 
-                          : 'bg-white/70 backdrop-blur-md border-gray-100 text-gray-500 hover:border-teal-100'
+                          ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-500/20' 
+                          : 'bg-white/80 backdrop-blur-md border-gray-100 text-gray-500 hover:border-teal-100 shadow-sm'
                       }`}
                     >
                       <span>{c.name}</span>
@@ -197,11 +222,8 @@ export default function GraphPage() {
 
             <div className="flex items-center gap-2 pointer-events-auto">
                 <button 
-                    onClick={() => {
-                        setNodes(initialNodes);
-                        setEdges(initialEdges);
-                    }}
-                    className="flex items-center gap-2 bg-white/80 backdrop-blur-md px-4 py-2 rounded-2xl border border-gray-100 shadow-sm text-sm font-bold text-gray-700 hover:bg-white transition-all active:scale-95"
+                    onClick={() => fetchGraph()}
+                    className="flex items-center gap-2 bg-white/80 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-gray-100 shadow-sm text-[10px] font-black uppercase tracking-widest text-gray-700 hover:bg-white transition-all active:scale-95"
                 >
                     <Maximize2 size={16} />
                     重置视图
@@ -209,24 +231,28 @@ export default function GraphPage() {
             </div>
         </div>
 
-        {/* 底部图例 */}
-        <div className="absolute bottom-6 left-6 z-20 bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-            <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider">关联类型图例</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                {Object.entries(RELATION_CONFIG).map(([key, value]) => (
-                    <div key={key} className="flex items-center gap-2">
-                        <div className="w-6 h-0.5 rounded-full" style={{ backgroundColor: value.color }} />
-                        <span className="text-[10px] font-bold text-gray-600">{value.label}</span>
+        {isLoading && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/40 backdrop-blur-[2px]">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="p-4 bg-white rounded-3xl shadow-2xl">
+                        <Loader2 className="animate-spin text-teal-600" size={32} />
                     </div>
-                ))}
-                <div className="flex items-center gap-2">
-                    <div className="w-6 h-0.5 rounded-full border-t-2 border-dashed border-gray-300" />
-                    <span className="text-[10px] font-bold text-gray-400 flex items-center gap-0.5">
-                        <AlertCircle size={8} /> 待确认
-                    </span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 animate-pulse">正在构建知识网络...</span>
                 </div>
             </div>
-        </div>
+        )}
+
+        {!isLoading && nodes.length === 0 && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center space-y-6">
+                <div className="w-24 h-24 bg-gray-50 rounded-[40px] flex items-center justify-center text-gray-200">
+                    <Network size={48} />
+                </div>
+                <div className="text-center space-y-2">
+                    <h3 className="text-xl font-black text-gray-900 tracking-tight">知识网络暂未建立</h3>
+                    <p className="text-sm font-medium text-gray-400 max-w-xs mx-auto">随着你分类下的笔记增多，Graphify 将自动扫描并在这里实时展现你知识系统中的语义链接。</p>
+                </div>
+            </div>
+        )}
 
         <ReactFlow
           nodes={nodes}
@@ -238,29 +264,25 @@ export default function GraphPage() {
           nodeTypes={nodeTypes}
           connectionMode={ConnectionMode.Loose}
           fitView
-          fitViewOptions={{ padding: 0.2, duration: 800 }}
-          minZoom={0.1}
-          maxZoom={2}
-          defaultZoom={0.8}
-          snapToGrid={true}
-          snapGrid={[15, 15]}
+          fitViewOptions={{ padding: 0.3, duration: 1000 }}
+          minZoom={0.05}
+          maxZoom={3}
+          defaultZoom={0.7}
           panOnScroll={true}
           panOnDrag={true}
-          selectionOnDrag={false}
           zoomOnScroll={true}
           zoomOnPinch={true}
-          selectNodesOnDrag={false}
         >
           <Background 
             variant="dots" 
-            gap={24} 
+            gap={32} 
             size={1.5} 
-            color="#e2e8f0" 
-            className="bg-slate-50/30"
+            color="#f1f5f9" 
+            className="bg-[#fdfdfd]"
           />
           <Controls 
             showInteractive={false} 
-            className="!bg-white/80 !backdrop-blur-md !border-gray-100 !shadow-xl !rounded-2xl !overflow-hidden !m-6" 
+            className="!bg-white/80 !backdrop-blur-md !border-gray-100 !shadow-2xl !rounded-3xl !overflow-hidden !m-8 !p-1" 
           />
         </ReactFlow>
       </div>
