@@ -7,7 +7,7 @@ import { handleError } from '@/lib/api-response';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { categoryId: string } }
+  { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
     const userId = await requireAuth(req);

@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { categoryId: string } }
+  { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
     const userId = await requireAuth(req);

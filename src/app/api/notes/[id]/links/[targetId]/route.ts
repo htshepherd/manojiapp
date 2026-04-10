@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string; targetId: string } }
+  { params }: { params: Promise<{ id: string; targetId: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
