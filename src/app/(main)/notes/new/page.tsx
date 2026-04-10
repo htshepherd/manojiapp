@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCategoriesStore } from '@/store/categories';
+import { useAuthStore } from '@/store/auth';
 import { useNotesStore } from '@/store/notes';
 import { Loader2, RotateCcw, Sparkles, CheckCircle2, ArrowRight, ChevronLeft, Save } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -43,7 +44,7 @@ export default function NewNotePage() {
     // 如果是更正模式，加载原始笔记数据
     if (overwriteId) {
         const fetchOriginal = async () => {
-            const token = useCategoriesStore.getState().token || (localStorage.getItem('auth-storage') 
+            const token = useAuthStore.getState().token || (localStorage.getItem('auth-storage') 
                 ? JSON.parse(localStorage.getItem('auth-storage')!).state.token 
                 : null);
             try {
