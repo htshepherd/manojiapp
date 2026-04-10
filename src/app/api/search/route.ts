@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     // Qdrant 语义检索
     const qdrantResults = await searchSimilar(
-      queryVector, userId, category_id, topK
+      queryVector, userId, category_id ?? undefined, topK
     );
     if (qdrantResults.length === 0) {
       return NextResponse.json({ results: [] });
