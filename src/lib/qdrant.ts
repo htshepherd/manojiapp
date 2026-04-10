@@ -5,21 +5,27 @@ declare global {
 }
 
 export const qdrant = global._qdrantClient ?? new QdrantClient({
-  url: process.env.QDRANT_URL
+  url: process.env.QDRANT_URL,
+  // 若 Qdrant 实例开启了 API Key 鉴权（生产环境推荐），通过环境变量传入
+  ...(process.env.QDRANT_API_KEY ? { apiKey: process.env.QDRANT_API_KEY } : {}),
 });
 
 if (process.env.NODE_ENV !== 'production') {
   global._qdrantClient = qdrant;
 }
 
-const COLLECTION = process.env.QDRANT_COLLECTION!;
+if (!process.env.QDRANT_COLLECTION) {
+  throw new Error('[qdrant] 缺少必要环境变量：QDRANT_COLLECTION');
+}
+const COLLECTION = process.env.QDRANT_COLLECTION;
+const VECTOR_SIZE = parseInt(process.env.QDRANT_VECTOR_SIZE || '1536');
 
 export async function ensureCollection(): Promise<void> {
   const collections = await qdrant.getCollections();
   const exists = collections.collections.some(c => c.name === COLLECTION);
   if (!exists) {
     await qdrant.createCollection(COLLECTION, {
-      vectors: { size: 1536, distance: 'Cosine' }
+      vectors: { size: VECTOR_SIZE, distance: 'Cosine' }
     });
   }
 }
@@ -33,8 +39,17 @@ export async function embedText(text: string): Promise<number[]> {
     },
     body: JSON.stringify({ model: process.env.EMBEDDING_MODEL, input: text })
   });
+
+  if (!response.ok) {
+    throw new Error(`[embedText] Embedding API 返回错误: HTTP ${response.status}`);
+  }
+
   const data = await response.json();
-  return data.data[0].embedding;
+  const embedding = data?.data?.[0]?.embedding;
+  if (!Array.isArray(embedding)) {
+    throw new Error(`[embedText] Embedding API 响应结构异常: 未找到 data[0].embedding`);
+  }
+  return embedding;
 }
 
 export async function upsertVector(
@@ -71,8 +86,10 @@ export async function searchSimilar(
   const results = await qdrant.search(COLLECTION, {
     vector, filter, limit: topK, with_payload: true
   });
-  return results.map(r => ({
-    note_id: r.payload!.note_id as string,
-    score: r.score
-  }));
+  return results
+    .filter(r => typeof r.payload?.note_id === 'string' && r.payload.note_id.length > 0)
+    .map(r => ({
+      note_id: r.payload!.note_id as string,
+      score: r.score
+    }));
 }

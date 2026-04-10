@@ -5,40 +5,44 @@ export function sanitizeDirName(name: string): string {
   return name.trim().replace(/\s+/g, '_').replace(/[^\w\u4e00-\u9fa5-]/g, '');
 }
 
-export function createRawDir(categoryName: string): string {
+export async function createRawDir(categoryName: string): Promise<string> {
   const dirPath = path.resolve(
     process.env.RAW_NOTES_DIR!,
     sanitizeDirName(categoryName)
   );
-  fs.mkdirSync(dirPath, { recursive: true });
+  await fs.promises.mkdir(dirPath, { recursive: true });
   return dirPath;
 }
 
-export function deleteRawDir(rawDir: string): void {
-  if (fs.existsSync(rawDir)) {
-    fs.rmSync(rawDir, { recursive: true, force: true });
+export async function deleteRawDir(rawDir: string): Promise<void> {
+  try {
+    await fs.promises.rm(rawDir, { recursive: true, force: true });
+  } catch (err) {
+    // 忽略目录不存在等非核心错误
   }
 }
 
-export function renameRawDir(oldDir: string, newCategoryName: string): string {
+export async function renameRawDir(oldDir: string, newCategoryName: string): Promise<string> {
   const newDir = path.resolve(
     process.env.RAW_NOTES_DIR!,
     sanitizeDirName(newCategoryName)
   );
-  if (fs.existsSync(oldDir)) {
-    fs.renameSync(oldDir, newDir);
+  try {
+    await fs.promises.rename(oldDir, newDir);
+  } catch (err) {
+    // 忽略旧目录不存在的情况
   }
   return newDir;
 }
 
-export function writeRawNote(
+export async function writeRawNote(
   rawDir: string,
   noteId: string,
   title: string,
   categoryName: string,
   createdAt: string,
   content: string
-): string {
+): Promise<string> {
   const filePath = path.join(rawDir, `${noteId}.md`);
   const frontmatter = `---
 id: ${noteId}
@@ -48,12 +52,14 @@ created_at: ${createdAt}
 ---
 
 `;
-  fs.writeFileSync(filePath, frontmatter + content, 'utf-8');
+  await fs.promises.writeFile(filePath, frontmatter + content, 'utf-8');
   return filePath;
 }
 
-export function deleteRawNote(filePath: string): void {
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
+export async function deleteRawNote(filePath: string): Promise<void> {
+  try {
+    await fs.promises.unlink(filePath);
+  } catch (err) {
+    // 忽略文件不存在等错误
   }
 }

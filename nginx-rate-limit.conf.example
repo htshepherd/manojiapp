@@ -1,0 +1,16 @@
+# ─── /etc/nginx/conf.d/rate-limit.conf ──────────────────────────────────────
+# 限流共享内存区域定义（必须放在 http {} 块内，在所有 server {} 之外）
+# 将本文件放到 /etc/nginx/conf.d/ 目录，Nginx 会自动 include 进 http {}
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 通用 API：每 IP 每秒 20 个请求（正常浏览绰绰有余）
+limit_req_zone $binary_remote_addr zone=api_general:10m rate=20r/s;
+
+# AI 生成接口：每 IP 每分钟 5 次（保护 Claude API 账单）
+limit_req_zone $binary_remote_addr zone=api_generate:10m rate=5r/m;
+
+# 登录接口：每 IP 每分钟 10 次（防暴力破解）
+limit_req_zone $binary_remote_addr zone=api_login:10m rate=10r/m;
+
+# 超出限制时的统一日志记录（warn 级别，不影响性能）
+limit_req_log_level warn;

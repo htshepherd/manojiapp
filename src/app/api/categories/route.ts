@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createRawDir } from '@/lib/filesystem';
+import { z } from 'zod';
+import { handleError } from '@/lib/api-response';
+
+const CategorySchema = z.object({
+  name: z.string().min(1).max(50),
+  granularity: z.string().min(1),
+  promptTemplate: z.string().min(10),
+  linkThreshold: z.number().min(0).max(1).optional().default(0.75),
+  synthesisTriggerCount: z.number().int().min(1).max(100).optional().default(5),
+});
 
 export async function GET(req: NextRequest) {
   try {
@@ -30,22 +40,20 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ categories: categoriesWithCount });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+    return handleError(err);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireAuth(req);
-    const {
-      name, granularity, promptTemplate,
-      linkThreshold = 0.75, synthesisTriggerCount = 5
-    } = await req.json();
+    const body = await req.json();
 
-    // 基础校验：只针对核心字段
-    if (!name || !granularity || !promptTemplate) {
-      return NextResponse.json({ error: '分类名称、粒度和提炼指令不能为空' }, { status: 400 });
+    const validation = CategorySchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ error: '无效的分参数', details: validation.error.format() }, { status: 400 });
     }
+    const { name, granularity, promptTemplate, linkThreshold, synthesisTriggerCount } = validation.data;
 
     // 重名校验
     const dup = await db.query(
@@ -56,7 +64,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '该分类名称已存在' }, { status: 400 });
     }
 
-    const rawDir = createRawDir(name);
+    const rawDir = await createRawDir(name);
     const result = await db.query(
       `INSERT INTO categories
        (user_id, name, granularity, prompt_template, link_threshold, synthesis_trigger_count, raw_dir)
@@ -71,6 +79,6 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json({ category: result.rows[0] }, { status: 201 });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+    return handleError(err);
   }
 }

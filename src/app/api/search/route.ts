@@ -3,16 +3,25 @@ import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { embedText, searchSimilar } from '@/lib/qdrant';
 import { generatePreview } from '@/lib/text';
+import { z } from 'zod';
+import { handleError } from '@/lib/api-response';
+
+const SearchSchema = z.object({
+  query: z.string().min(1).max(6000),
+  category_id: z.string().uuid().optional().nullable(),
+  top_k: z.number().int().min(1).max(20).optional().default(10),
+});
 
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireAuth(req);
-    const { query, category_id, top_k = 10 } = await req.json();
-
-    if (!query || query.trim().length === 0) {
-      return NextResponse.json({ error: '搜索词不能为空' }, { status: 400 });
+    const body = await req.json();
+    
+    const result = SearchSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: '无效的搜索请求参数', details: result.error.format() }, { status: 400 });
     }
-    const topK = Math.min(top_k, 20);
+    const { query, category_id, top_k: topK } = result.data;
 
     // 向量化查询词
     let queryVector: number[];
@@ -62,6 +71,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ results });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+    return handleError(err);
   }
 }

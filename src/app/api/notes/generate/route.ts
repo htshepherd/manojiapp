@@ -6,12 +6,26 @@ import { embedText, upsertVector } from '@/lib/qdrant';
 import { writeRawNote } from '@/lib/filesystem';
 import { incrementNoteCount } from '@/lib/noteCount';
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
+import { handleError } from '@/lib/api-response';
+
+const GenerateSchema = z.object({
+  category_id: z.string().uuid(),
+  input_text: z.string().min(10).max(6000),
+  overwrite_note_id: z.string().uuid().optional().nullable(),
+});
 
 export async function POST(req: NextRequest) {
   try {
     console.log('>>> [API] Received generation request');
     const userId = await requireAuth(req);
-    const { category_id, input_text, overwrite_note_id } = await req.json();
+    const body = await req.json();
+
+    const validation = GenerateSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ error: '无效的生成请求参数', details: validation.error.format() }, { status: 400 });
+    }
+    const { category_id, input_text, overwrite_note_id } = validation.data;
 
     // 环境检查
     if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY.includes('xxxx')) {
@@ -19,7 +33,9 @@ export async function POST(req: NextRequest) {
     }
 
     const catResult = await db.query(
-      `SELECT * FROM categories WHERE id = $1 AND user_id = $2`, [category_id, userId]
+      `SELECT id, name, granularity, prompt_template, link_threshold, synthesis_trigger_count, raw_dir
+       FROM categories WHERE id = $1 AND user_id = $2`,
+      [category_id, userId]
     );
     if (catResult.rows.length === 0) {
       return NextResponse.json({ error: '找不到对应的分类' }, { status: 404 });
@@ -39,6 +55,17 @@ export async function POST(req: NextRequest) {
         }, { status: 500 });
     }
 
+    // 越权写入防护：若为更正操作，必须先校验该笔记归属当前用户
+    if (overwrite_note_id) {
+      const ownerCheck = await db.query(
+        `SELECT id FROM notes WHERE id = $1 AND user_id = $2 AND status = 'active'`,
+        [overwrite_note_id, userId]
+      );
+      if (ownerCheck.rows.length === 0) {
+        return NextResponse.json({ error: '无权操作该笔记' }, { status: 403 });
+      }
+    }
+
     const noteId = overwrite_note_id || uuidv4();
     const result = await db.query(
       `INSERT INTO notes
@@ -54,7 +81,7 @@ export async function POST(req: NextRequest) {
 
     // 物理文件同步
     try {
-        const rawFilePath = writeRawNote(category.raw_dir, noteId, generated.title, category.name, new Date().toISOString(), generated.content);
+        const rawFilePath = await writeRawNote(category.raw_dir, noteId, generated.title, category.name, new Date().toISOString(), generated.content);
         await db.query(`UPDATE notes SET raw_file_path = $1 WHERE id = $2`, [rawFilePath, noteId]);
     } catch (fsErr) {
         console.warn('>>> [FS WARNING]', fsErr);
@@ -103,7 +130,6 @@ export async function POST(req: NextRequest) {
         pending_until: new Date(Date.now() + 5000).toISOString() 
     });
   } catch (globalErr: any) {
-    console.error('>>> [GLOBAL ERROR]', globalErr);
-    return NextResponse.json({ error: `系统异常: ${globalErr.message}` }, { status: 500 });
+    return handleError(globalErr);
   }
 }

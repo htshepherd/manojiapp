@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { handleError } from '@/lib/api-response';
 
 export async function GET(
   req: NextRequest,
@@ -13,11 +14,8 @@ export async function GET(
     const noteResult = await db.query(
       `SELECT 
         id, title, content, tags, status,
-        source_text AS "sourceText",
         category_id AS "categoryId",
         category_name AS "categoryName",
-        vector_id AS "vectorId",
-        raw_file_path AS "rawFilePath",
         created_at AS "createdAt",
         updated_at AS "updatedAt"
        FROM notes WHERE id = $1 AND user_id = $2 AND status = 'active'`,
@@ -28,7 +26,7 @@ export async function GET(
     }
     const note = noteResult.rows[0];
 
-    // 拉取双向关联并去重
+    // 拉取双向关联并去重，同时限制关联笔记必须属于当前用户且为活跃状态
     const linksResult = await db.query(
       `SELECT DISTINCT ON (
           CASE WHEN nl.note_id = $1 THEN nl.target_note_id ELSE nl.note_id END
@@ -42,16 +40,18 @@ export async function GET(
           n.title AS "targetNoteTitle"
        FROM note_links nl
        JOIN notes n ON n.id = CASE WHEN nl.note_id = $1 THEN nl.target_note_id ELSE nl.note_id END
+         AND n.user_id = $2
+         AND n.status = 'active'
        WHERE (nl.note_id = $1 OR nl.target_note_id = $1) AND nl.user_deleted = false
        ORDER BY
           CASE WHEN nl.note_id = $1 THEN nl.target_note_id ELSE nl.note_id END,
           nl.similarity_score DESC`,
-      [id]
+      [id, userId]
     );
 
     return NextResponse.json({ note: { ...note, links: linksResult.rows } });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+    return handleError(err);
   }
 }
 
@@ -72,24 +72,22 @@ export async function DELETE(
     }
     const { raw_file_path, vector_id } = noteResult.rows[0];
 
+    await db.query(`DELETE FROM notes WHERE id = $1 AND user_id = $2`, [id, userId]);
+
+    // DB 删除成功后，异步进行外部资源清理（即使失败也不影响主流程结果）
+    // 注意：由于已经从 DB 删除了，即使清理失败，用户也看不见该笔记了。
     if (vector_id) {
       const { deleteVectors } = await import('@/lib/qdrant');
-      await deleteVectors([vector_id]);
+      deleteVectors([vector_id]).catch(e => console.error('[Cleanup] Qdrant vector deletion failed:', e));
     }
 
     if (raw_file_path) {
       const fs = await import('fs/promises');
-      try {
-        await fs.unlink(raw_file_path);
-      } catch (e) {
-        console.warn('File deletion failed:', e);
-      }
+      fs.unlink(raw_file_path).catch(e => console.error('[Cleanup] File deletion failed:', e));
     }
-
-    await db.query(`DELETE FROM notes WHERE id = $1 AND user_id = $2`, [id, userId]);
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+    return handleError(err);
   }
 }

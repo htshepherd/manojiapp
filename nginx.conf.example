@@ -1,0 +1,151 @@
+# ─── /etc/nginx/sites-available/manojiapp ────────────────────────────────────
+# 漫记 (ManoJi) Nginx 生产配置
+# 包含：反向代理、限流、安全 Headers、SSL（Let's Encrypt）
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ─── 限流区域定义（在 http {} 块内，放在 server 块外面）────────────────────────
+# 注意：这些 limit_req_zone 指令需要放在 nginx.conf 的 http {} 块，
+# 或 /etc/nginx/conf.d/rate-limit.conf 中，而不是放在 server {} 块内。
+
+# 通用 API 限流：每个 IP 每秒最多 20 个请求（突发允许 40）
+# limit_req_zone $binary_remote_addr zone=api_general:10m rate=20r/s;
+
+# 高成本接口限流：每个 IP 每分钟最多 5 次（AI 生成，防止账单暴增）
+# limit_req_zone $binary_remote_addr zone=api_generate:10m rate=5r/m;
+
+# 登录接口限流：每个 IP 每分钟最多 10 次（防止暴力破解）
+# limit_req_zone $binary_remote_addr zone=api_login:10m rate=10r/m;
+
+# =============================================================================
+# HTTP → HTTPS 跳转
+# =============================================================================
+server {
+    listen 80;
+    server_name your-domain.com;  # 替换为你的域名
+
+    # Let's Encrypt 验证路径
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# =============================================================================
+# 主 HTTPS 服务
+# =============================================================================
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name your-domain.com;  # 替换为你的域名
+
+    # ─── SSL 证书（Let's Encrypt / 阿里云免费证书）─────────────────────────
+    ssl_certificate     /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    # ─── 安全响应头 ────────────────────────────────────────────────────────
+    add_header X-Frame-Options           "SAMEORIGIN"   always;
+    add_header X-Content-Type-Options    "nosniff"      always;
+    add_header X-XSS-Protection          "1; mode=block" always;
+    add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy        "camera=(), microphone=(), geolocation=()" always;
+    # 注意：Content-Security-Policy 需要根据实际使用的第三方资源调整
+    # add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src fonts.gstatic.com;" always;
+
+    # HSTS（谨慎启用，一旦启用浏览器会强制 HTTPS 一年）
+    # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # ─── 客户端请求体大小限制 ──────────────────────────────────────────────
+    client_max_body_size 10m;
+
+    # ─── 高成本 AI 生成接口：严格限流 ─────────────────────────────────────
+    # 每 IP 每分钟最多 5 次，突发容忍 2 次，超出直接 429
+    location /api/notes/generate {
+        limit_req zone=api_generate burst=2 nodelay;
+        limit_req_status 429;
+
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection 'upgrade';
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+
+        # AI 生成可能耗时较长，适当放宽超时
+        proxy_read_timeout 120s;
+        proxy_connect_timeout 10s;
+    }
+
+    # ─── 登录接口：防暴力破解 ───────────────────────────────────────────────
+    location /api/auth/login {
+        limit_req zone=api_login burst=5 nodelay;
+        limit_req_status 429;
+
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+
+    # ─── 调试接口：生产环境直接屏蔽（额外防护，应用层已屏蔽）──────────────
+    location /api/debug {
+        return 404;
+    }
+
+    # ─── 其余所有 API：通用限流 ─────────────────────────────────────────────
+    location /api/ {
+        limit_req zone=api_general burst=40 nodelay;
+        limit_req_status 429;
+
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection 'upgrade';
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 30s;
+    }
+
+    # ─── 前端静态资源与 Next.js 页面 ────────────────────────────────────────
+    location / {
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection 'upgrade';
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 30s;
+    }
+
+    # ─── Next.js 静态文件缓存（大幅提升性能）────────────────────────────────
+    location /_next/static/ {
+        proxy_pass       http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        # 静态文件内容哈希不变，可长期缓存
+        expires 365d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # ─── 访问日志 ──────────────────────────────────────────────────────────
+    access_log /var/log/nginx/manojiapp_access.log;
+    error_log  /var/log/nginx/manojiapp_error.log warn;
+}

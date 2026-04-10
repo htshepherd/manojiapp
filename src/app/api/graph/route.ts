@@ -13,15 +13,13 @@ export async function GET(req: NextRequest) {
     const graphPath = path.resolve(process.env.GRAPHIFY_OUT_DIR!, 'graph.json');
     
     // 如果 graph.json 还不存在（Graphify 尚未运行），fallback 到直接读数据库
-    if (!fs.existsSync(graphPath)) {
-      return await fallbackFromDB(userId, categoryId);
-    }
-
-    let graphify: any;
+    let graphify: any = null;
     try {
-      graphify = JSON.parse(fs.readFileSync(graphPath, 'utf-8'));
-    } catch (e) {
-      console.error('graph.json parsing failed:', e);
+      await fs.promises.access(graphPath);
+      const data = await fs.promises.readFile(graphPath, 'utf-8');
+      graphify = JSON.parse(data);
+    } catch (err) {
+      console.warn('graph.json not found or invalid:', err);
       return await fallbackFromDB(userId, categoryId);
     }
 
