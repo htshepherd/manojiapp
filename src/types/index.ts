@@ -19,6 +19,7 @@ export interface Category {
 
 export interface NoteLink {
   targetNoteId: string
+  targetNoteTitle?: string
   relationType: RelationType
   relationConfidence: RelationConfidence
   sourceCategoryName: string
