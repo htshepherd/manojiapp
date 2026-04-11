@@ -50,7 +50,7 @@ export default function LoginPage() {
           </div>
           <div>
             <span className="text-white font-black text-xl tracking-tight">漫记</span>
-            <span className="text-teal-400/60 text-[10px] font-black uppercase tracking-[0.35em] ml-2.5">manoji</span>
+            <span className="text-teal-400/60 text-[10px] font-black uppercase tracking-[0.35em] ml-2.5">manoai</span>
           </div>
         </div>
 
@@ -179,7 +179,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-gray-200 text-[9px] font-black uppercase tracking-[0.3em] mt-14">
-            MANOJI · Private AI System
+            MANOAI · Private AI System
           </p>
         </div>
       </div>

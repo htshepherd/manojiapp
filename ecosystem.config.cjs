@@ -5,7 +5,7 @@
 module.exports = {
   apps: [
     {
-      name: 'manoji-app',
+      name: 'manoai-app',
       script: 'node_modules/.bin/next',
       args: 'start',
       cwd: __dirname,

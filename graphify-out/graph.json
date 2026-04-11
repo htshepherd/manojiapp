@@ -1,8 +1,23 @@
 {
-  "generated_at": "2026-04-10T14:52:34.239Z",
-  "node_count": 6,
-  "edge_count": 18,
+  "generated_at": "2026-04-11T05:28:47.738Z",
+  "node_count": 7,
+  "edge_count": 23,
   "nodes": [
+    {
+      "id": "2c2336c6-4730-47e5-9ace-5aebb31192b4",
+      "title": "密友时刻与 Locket Widget：亲密关系分享欲如何撑起一个 DAU",
+      "categoryId": "1663b683-6d7e-4955-8cce-f20f2ffddab7",
+      "categoryName": "产品设计分析",
+      "tags": [
+        "社交产品",
+        "冷启动",
+        "用户动机",
+        "亲密关系",
+        "Widget"
+      ],
+      "linkCount": 5,
+      "createdAt": "2026-04-11T05:28:44.339Z"
+    },
     {
       "id": "7dbfea02-8559-4a33-bb24-205cd735bd0b",
       "title": "社交 vs 社区：一字之差，产品逻辑天壤之别",
@@ -14,7 +29,7 @@
         "产品定义",
         "用户动机"
       ],
-      "linkCount": 5,
+      "linkCount": 6,
       "createdAt": "2026-04-10T14:52:30.850Z"
     },
     {
@@ -45,7 +60,7 @@
         "聊天室",
         "社交产品"
       ],
-      "linkCount": 5,
+      "linkCount": 6,
       "createdAt": "2026-04-10T09:13:09.080Z"
     },
     {
@@ -60,7 +75,7 @@
         "熟人社交",
         "关系升级"
       ],
-      "linkCount": 7,
+      "linkCount": 8,
       "createdAt": "2026-04-10T07:06:57.727Z"
     },
     {
@@ -75,7 +90,7 @@
         "社交动机",
         "冷启动"
       ],
-      "linkCount": 7,
+      "linkCount": 8,
       "createdAt": "2026-04-10T07:05:59.504Z"
     },
     {
@@ -90,7 +105,7 @@
         "场景设计",
         "Locket Widget"
       ],
-      "linkCount": 7,
+      "linkCount": 8,
       "createdAt": "2026-04-10T07:03:13.377Z"
     }
   ],
@@ -219,6 +234,51 @@
       "relationType": "supplement",
       "relationConfidence": "inferred",
       "similarityScore": 0.7420234,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "07c16848-9c5e-4218-9e1c-6ca5ae140417",
+      "source": "2c2336c6-4730-47e5-9ace-5aebb31192b4",
+      "target": "a4f14a33-6a58-4e07-9b3c-509d2c237a85",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.8361472,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "81fdd600-06e8-40a4-b94d-07224e9dc7e2",
+      "source": "2c2336c6-4730-47e5-9ace-5aebb31192b4",
+      "target": "53ed4d91-5429-4ae8-961c-939a62790ae4",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.7631007,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "c11f61c9-6685-4c19-a9ed-3f1272605993",
+      "source": "2c2336c6-4730-47e5-9ace-5aebb31192b4",
+      "target": "7066f09b-234b-4931-bafa-a009829fcbdc",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.75628495,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "da650180-68a3-4228-8291-f0ae24cc0376",
+      "source": "2c2336c6-4730-47e5-9ace-5aebb31192b4",
+      "target": "7dbfea02-8559-4a33-bb24-205cd735bd0b",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.7167162,
+      "sourceCategoryName": "产品设计分析"
+    },
+    {
+      "id": "586b3261-e14a-4d92-bcc3-bd3aa8ca7778",
+      "source": "2c2336c6-4730-47e5-9ace-5aebb31192b4",
+      "target": "269b4bf6-dafb-46be-a788-1e749a541495",
+      "relationType": "supplement",
+      "relationConfidence": "inferred",
+      "similarityScore": 0.69472843,
       "sourceCategoryName": "产品设计分析"
     },
     {

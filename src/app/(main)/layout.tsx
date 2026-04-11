@@ -50,7 +50,7 @@ export default function MainLayout({
           </div>
           <div className="flex flex-col">
             <span className="text-xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900">漫记</span>
-            <span className="text-[10px] uppercase tracking-widest font-bold text-teal-600/80 -mt-1">manoji AI</span>
+            <span className="text-[10px] uppercase tracking-widest font-bold text-teal-600/80 -mt-1">manoai</span>
           </div>
         </div>
 
