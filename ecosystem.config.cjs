@@ -23,20 +23,17 @@ module.exports = {
     {
       name: 'graphify-watcher',
       script: 'graphify.ts',
-      interpreter: './node_modules/.bin/tsx',
+      interpreter: 'node',
+      // 使用 tsx 注册器以直接运行 ts 文件，这是目前最工程化的做法
+      interpreter_args: '--import tsx',
       cwd: __dirname,
       env: {
         NODE_ENV: 'production',
-        DATABASE_URL: process.env.DATABASE_URL,
-        RAW_NOTES_DIR: process.env.RAW_NOTES_DIR || './notes/raw',
-        GRAPHIFY_OUT_DIR: process.env.GRAPHIFY_OUT_DIR || './graphify-out',
-        GRAPHIFY_WEBHOOK_URL: 'http://localhost:3000/api/internal/graphify-sync',
-        GRAPHIFY_WEBHOOK_SECRET: process.env.GRAPHIFY_WEBHOOK_SECRET,
       },
       watch: false,
       autorestart: true,
       restart_delay: 5000,
-      max_restarts: 20,
+      max_restarts: 30,
       error_file: './logs/graphify-error.log',
       out_file: './logs/graphify-out.log',
     }

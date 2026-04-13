@@ -89,7 +89,10 @@ function postWebhook(url: string, body: object, secret: string): Promise<void> {
 // ─── 数据库连接 ───────────────────────────────────────────────────────────────
 
 async function queryDB(sql: string, params: any[] = []): Promise<any[]> {
-  const { Client } = await import('pg');
+  // 严谨处理 pg 导入，兼容不同版本的 Node/TS 运行环境
+  const pg = await import('pg');
+  const Client = pg.default ? pg.default.Client : pg.Client;
+  
   const client = new Client({ connectionString: DATABASE_URL });
   await client.connect();
   try {
