@@ -39,6 +39,11 @@ export async function PUT(
         return NextResponse.json({ error: '分类名称已存在' }, { status: 400 });
       }
       newRawDir = renameRawDir(category.raw_dir, name);
+      // 同步更新所有笔记中的冗余分类名称
+      await db.query(
+        `UPDATE notes SET category_name = $1 WHERE category_id = $2`,
+        [name, id]
+      );
     }
 
     // 执行更新，并强制返回 camelCase 字段

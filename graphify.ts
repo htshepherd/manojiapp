@@ -13,6 +13,12 @@ import * as path from 'path';
 import * as http from 'http';
 import * as https from 'https';
 import { watch } from 'fs';
+import dotenv from 'dotenv';
+
+// 加载环境变量
+dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env.production' });
+dotenv.config(); // 默认 .env
 
 // ─── 配置 ────────────────────────────────────────────────────────────────────
 
@@ -171,6 +177,7 @@ async function compile() {
     log(`编译完成 ✅ (${nodes.length} 节点, ${edges.length} 边)`);
   } catch (err: any) {
     log(`编译失败: ${err.message}`);
+    console.error('[Graphify Compile Error Stack]', err);
     fs.appendFileSync(
       path.join(OUTPUT_DIR, 'error.log'),
       `[${new Date().toISOString()}] ${err.stack}\n`
