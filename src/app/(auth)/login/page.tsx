@@ -57,15 +57,16 @@ export default function LoginPage() {
         <div className="relative flex-1 flex flex-col justify-center z-10 space-y-8">
           <div className="inline-flex items-center gap-2.5 bg-white/[0.04] border border-white/[0.08] rounded-full px-4 py-1.5 w-fit">
             <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-            <span className="text-teal-400/80 text-[10px] font-black uppercase tracking-[0.3em]">AI Knowledge Engine</span>
+            <span className="text-teal-400/80 text-[10px] font-black uppercase tracking-[0.3em]">Personal AI Wiki</span>
           </div>
 
           <div className="space-y-4">
-            <h1 className="text-5xl font-black text-white leading-[1.1] tracking-tight whitespace-nowrap">
-              思想的<span className="bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">永久存档</span>
+            <h1 className="text-4xl lg:text-5xl font-black text-white leading-[1.15] tracking-tight whitespace-nowrap">
+              个人<span className="bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">WIKI知识库</span>
             </h1>
-            <p className="text-white/35 text-sm leading-[1.9] max-w-[260px] font-medium">
-              将每一次思考沉淀为结构化知识，让 AI 帮你发现隐藏在笔记之间的连线。
+            <p className="text-white/40 text-sm leading-[1.9] max-w-[480px] font-medium">
+              把每一次思考，变成可链接、可演化的知识页。<br />
+              AI 自动提炼、串联和总结，让你的笔记长成一个属于自己的知识 Wiki。
             </p>
           </div>
         </div>
