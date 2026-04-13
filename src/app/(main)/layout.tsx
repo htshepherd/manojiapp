@@ -63,8 +63,8 @@ export default function MainLayout({
     { label: "记录笔记", href: "/notes/new",  icon: <PenSquare size={22} /> },
     { label: "全部笔记", href: "/notes",      icon: <BookText size={22} />  },
     { label: "随机漫步", href: "/wander",     icon: <Shuffle size={22} />   },
-    { label: "分类管理", href: "/categories", icon: <FolderTree size={22} />},
-    { label: "模版管理", href: "/templates",  icon: <FileText size={22} />  },
+    { label: "知识领域", href: "/categories", icon: <FolderTree size={22} />},
+    { label: "提示词库", href: "/templates",  icon: <FileText size={22} />  },
     { label: "知识图谱", href: "/graph",      icon: <Network size={22} />   },
   ];
 

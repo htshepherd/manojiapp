@@ -60,7 +60,7 @@ export default function TemplatesPage() {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (confirm("确定删除该模版吗？")) {
+    if (confirm("确定删除该提示词吗？")) {
       const success = await deleteTemplate(id);
       if (!success) {
         alert("删除失败：请检查网络连接或登录状态。");
@@ -72,7 +72,7 @@ export default function TemplatesPage() {
     <div className="flex flex-col h-full space-y-10 animate-in fade-in duration-500">
       <div className="hidden md:flex items-end justify-between px-2">
         <div className="space-y-1">
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">模版管理</h1>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">提示词库</h1>
           <p className="text-sm font-bold text-gray-400">定义和维护 AI 的知识提炼逻辑</p>
         </div>
         <button
@@ -80,7 +80,7 @@ export default function TemplatesPage() {
           className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-2xl hover:bg-teal-600 transition-all font-black uppercase text-xs tracking-widest shadow-lg active:scale-95"
         >
           <Plus size={18} />
-          新建模版
+          新建提示词
         </button>
       </div>
 
@@ -137,14 +137,14 @@ export default function TemplatesPage() {
             <Bot size={32} className="text-gray-200" />
           </div>
           <div className="space-y-2">
-            <p className="text-gray-900 font-black uppercase tracking-widest">暂无处理模版</p>
-            <p className="text-xs text-gray-400 font-medium">您可以点击右上角手动创建一个，或重新登录以恢复默认模版。</p>
+            <p className="text-gray-900 font-black uppercase tracking-widest">暂无提示词</p>
+            <p className="text-xs text-gray-400 font-medium">您可以点击右上角手动创建一个，或重新登录以恢复默认内容。</p>
           </div>
           <button 
             onClick={openCreateModal}
             className="hidden md:inline-block px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-teal-600 transition-all active:scale-95"
           >
-            立即创建模版
+            立即创建提示词
           </button>
         </div>
       )}
@@ -155,7 +155,7 @@ export default function TemplatesPage() {
           <div className="bg-white w-full sm:w-[500px] shadow-2xl h-full flex flex-col animate-in slide-in-from-right duration-500 relative">
             <div className="p-8 border-b border-gray-50 flex items-center justify-between">
               <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">
-                {editingTpl ? "编辑模版" : "新建模版"}
+                {editingTpl ? "编辑提示词" : "新建提示词"}
               </h2>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
                 <X size={24} />
@@ -165,7 +165,7 @@ export default function TemplatesPage() {
             <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-4">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2 block">模版名称</label>
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2 block">提示词名称</label>
                   <input
                     autoFocus
                     type="text"
@@ -176,7 +176,7 @@ export default function TemplatesPage() {
                   />
                 </div>
                 <div className="space-y-4">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2 block">模版类型</label>
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2 block">提示词类型</label>
                   <input
                     type="text"
                     value={type}
@@ -199,7 +199,7 @@ export default function TemplatesPage() {
               </div>
 
               <div className="space-y-4">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2 block">模版备注</label>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2 block">提示词备注</label>
                 <textarea
                   rows={3}
                   value={description}
@@ -217,7 +217,7 @@ export default function TemplatesPage() {
                 className="w-full py-5 bg-gray-900 text-white rounded-[24px] font-black uppercase tracking-widest text-xs shadow-xl shadow-gray-200 hover:bg-teal-600 transition-all active:scale-95 disabled:bg-gray-100 flex items-center justify-center gap-2"
               >
                 {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                保存模版
+                保存提示词
               </button>
             </div>
           </div>

@@ -132,15 +132,15 @@ export default function CategoriesPage() {
     <div className="flex flex-col h-full space-y-10 animate-in fade-in duration-500">
       <div className="hidden md:flex items-end justify-between px-2">
         <div className="space-y-1">
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">分类管理</h1>
-          <p className="text-sm font-bold text-gray-400">配置你的专属知识提炼引擎</p>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">知识领域</h1>
+          <p className="text-sm font-bold text-gray-400">配置AI引擎生成笔记WIKI</p>
         </div>
         <button
           onClick={openCreateModal}
           className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-2xl hover:bg-teal-600 transition-all font-black uppercase text-xs tracking-widest shadow-lg active:scale-95"
         >
           <Plus size={18} />
-          新建分类
+          新建领域
         </button>
       </div>
 
@@ -206,7 +206,7 @@ export default function CategoriesPage() {
                                 className="flex items-center gap-1.5 text-[10px] font-black text-teal-600 hover:bg-teal-600 hover:text-white transition-all uppercase tracking-widest bg-teal-50 px-3 py-1.5 rounded-lg ml-2"
                             >
                                 <Sparkles size={12} />
-                                综述
+                                AI WIKI
                             </Link>
                         </div>
                     </div>
@@ -218,8 +218,8 @@ export default function CategoriesPage() {
 
       {!isLoading && categories.length === 0 && (
         <div className="py-24 text-center bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200 space-y-4">
-          <p className="text-gray-900 font-black uppercase tracking-widest">暂无领域分类</p>
-          <button onClick={openCreateModal} className="hidden md:inline-block text-sm font-bold text-teal-600 hover:underline">点击创建你的第一个提炼引擎</button>
+          <p className="text-gray-900 font-black uppercase tracking-widest">暂无知识领域</p>
+          <button onClick={openCreateModal} className="hidden md:inline-block text-sm font-bold text-teal-600 hover:underline">点击创建</button>
         </div>
       )}
 
@@ -230,13 +230,13 @@ export default function CategoriesPage() {
                 <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-2">
                     <Trash2 size={32} />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight">确认删除分类？</h3>
+                <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight">确认删除该领域？</h3>
                 <p className="text-sm font-medium text-gray-500 leading-relaxed">
-                    {deleteConfirm.noteCount > 0 ? (
-                        <>该分类下包含 <strong className="text-teal-600">{deleteConfirm.noteCount} 篇笔记</strong>。删除后将失去所有关联的知识链路。</>
-                    ) : (
-                        <>这将移除该领域的知识处理配置。</>
-                    )}
+                  {deleteConfirm.noteCount > 0 ? (
+                    <>该领域下包含 <strong className="text-teal-600">{deleteConfirm.noteCount} 篇笔记</strong>。删除后将失去所有关联的知识链路。</>
+                  ) : (
+                    <>这将移除该领域的知识处理配置。</>
+                  )}
                 </p>
             </div>
             <div className="flex flex-col gap-3">
@@ -265,7 +265,7 @@ export default function CategoriesPage() {
             <div className="p-8 border-b border-gray-50 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">
-                  {editingId ? "编辑分类" : "新建分类"}
+                  {editingId ? "编辑领域" : "新建领域"}
                 </h2>
                 <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
                   <X size={24} />
@@ -290,7 +290,7 @@ export default function CategoriesPage() {
 
                     <div className="space-y-12">
                       <div className="space-y-8">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] px-2 block mb-4">分类名称</label>
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] px-2 block mb-4">领域名称</label>
                         <input
                           autoFocus
                           type="text"
@@ -449,7 +449,7 @@ export default function CategoriesPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] px-2 block">综述自动触发阈值</label>
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] px-2 block">AI WIKI 自动触发阈值</label>
                                 <div className="relative">
                                     <input
                                         type="number"
