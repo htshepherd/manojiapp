@@ -129,7 +129,10 @@ export default function NewNotePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-80px)] flex flex-col animate-in fade-in duration-500">
+    <div 
+      className="max-w-4xl mx-auto flex flex-col animate-in fade-in duration-500"
+      style={{ height: "calc(100dvh - var(--nav-top-h) - 2rem)" }}
+    >
       <div className="flex-1 flex flex-col overflow-hidden pb-2">
         {currentStep === 1 ? (
           <div className="bg-white rounded-[40px] pt-6 px-8 md:px-12 pb-6 shadow-sm border border-gray-100 flex flex-col flex-1 animate-in slide-in-from-bottom-4 duration-500 overflow-hidden">
@@ -167,7 +170,7 @@ export default function NewNotePage() {
                     <textarea
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
-                        placeholder="在此粘贴对话、摘要或知识片段，漫记将为您进行智能化提炼..."
+                        placeholder="在此粘贴对话、摘要或知识片段，manoai 将为您进行智能化提炼..."
                         className="w-full flex-1 bg-gray-50/50 border border-transparent rounded-[32px] px-8 py-8 focus:ring-8 focus:ring-teal-500/5 focus:bg-white focus:border-teal-500/20 outline-none transition-all resize-none text-gray-800 leading-relaxed text-lg shadow-inner"
                     />
                 </div>

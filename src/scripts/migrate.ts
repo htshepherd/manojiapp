@@ -1,3 +1,4 @@
+import "dotenv/config";
 import * as fs from 'fs';
 import * as path from 'path';
 import { db } from '../lib/db';
@@ -10,7 +11,8 @@ const FILES = [
   '004_create_notes.sql',
   '005_create_synthesis.sql',
   '006_create_migrations_history.sql',
-  '007_add_user_onboarding.sql'
+  '007_add_user_onboarding.sql',
+  '008_add_last_viewed_at.sql'
 ];
 
 async function migrate() {

@@ -49,8 +49,7 @@ export default function LoginPage() {
             <Sparkles className="text-white" size={20} />
           </div>
           <div>
-            <span className="text-white font-black text-xl tracking-tight">漫记</span>
-            <span className="text-teal-400/60 text-[10px] font-black uppercase tracking-[0.35em] ml-2.5">manoai</span>
+            <span className="text-white font-black text-xl tracking-tight">manoai</span>
           </div>
         </div>
 
@@ -90,12 +89,9 @@ export default function LoginPage() {
 
       {/* 右侧表单面板 */}
       <div className="flex-1 flex flex-col items-center justify-center p-8 lg:p-16">
-        {/* 移动端 Logo */}
+        {/* 移动端 Logo (Hidden as requested) */}
         <div className="lg:hidden flex items-center gap-3 mb-12">
-          <div className="w-9 h-9 bg-gradient-to-tr from-teal-500 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/30">
-            <Sparkles className="text-white" size={18} />
-          </div>
-          <span className="text-gray-900 font-black text-xl tracking-tight">漫记</span>
+          <span className="text-gray-900 font-black text-xl tracking-tight">manoai</span>
         </div>
 
         <div className="w-full max-w-[340px]">
@@ -114,7 +110,7 @@ export default function LoginPage() {
                 type="text"
                 value={account}
                 onChange={(e) => { setAccount(e.target.value); setError(false); }}
-                className={`w-full px-5 py-4 bg-gray-50 border rounded-2xl outline-none text-gray-900 font-medium text-sm transition-all duration-200 placeholder:text-gray-300 ${
+                className={`w-full px-5 py-4 bg-gray-50 border rounded-2xl outline-none text-gray-900 font-medium text-base md:text-sm transition-all duration-200 placeholder:text-gray-300 ${
                   error
                     ? 'border-red-200 bg-red-50/30'
                     : 'border-transparent focus:border-teal-300 focus:bg-white focus:shadow-[0_0_0_4px_rgba(20,184,166,0.07)]'
@@ -135,7 +131,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(false); }}
-                  className={`w-full px-5 py-4 bg-gray-50 border rounded-2xl outline-none text-gray-900 font-medium text-sm transition-all duration-200 placeholder:text-gray-300 pr-12 ${
+                  className={`w-full px-5 py-4 bg-gray-50 border rounded-2xl outline-none text-gray-900 font-medium text-base md:text-sm transition-all duration-200 placeholder:text-gray-300 pr-12 ${
                     error
                       ? 'border-red-200 bg-red-50/30'
                       : 'border-transparent focus:border-teal-300 focus:bg-white focus:shadow-[0_0_0_4px_rgba(20,184,166,0.07)]'

@@ -33,3 +33,41 @@ body {
   scrollbar-width: none;
 }
 
+/* =============================================
+   导航栏高度变量 & iOS Safe Area 适配
+   子任务二：移动端改造基础变量
+   ============================================= */
+
+:root {
+  /* 移动端顶部 Navbar 高度（含 safe area top，桌面端为 0） */
+  --nav-top-h: 0px;
+  /* 已移除底部 Tab Bar，bottom safe area 用于内容区 padding */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --nav-top-h: 56px;
+  }
+}
+
+/* body 滚动锁定：抽屉打开时由 JS 添加此 class */
+body.drawer-open {
+  overflow: hidden;
+}
+
+/* 移动端 Markdown 阅读优化 */
+.prose pre {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.prose table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.prose img {
+  max-width: 100%;
+  height: auto;
+}
+

@@ -70,7 +70,7 @@ export default function TemplatesPage() {
 
   return (
     <div className="flex flex-col h-full space-y-10 animate-in fade-in duration-500">
-      <div className="flex items-end justify-between px-2">
+      <div className="hidden md:flex items-end justify-between px-2">
         <div className="space-y-1">
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">模版管理</h1>
           <p className="text-sm font-bold text-gray-400">定义和维护 AI 的知识提炼逻辑</p>
@@ -142,7 +142,7 @@ export default function TemplatesPage() {
           </div>
           <button 
             onClick={openCreateModal}
-            className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-teal-600 transition-all active:scale-95"
+            className="hidden md:inline-block px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-teal-600 transition-all active:scale-95"
           >
             立即创建模版
           </button>
@@ -172,7 +172,7 @@ export default function TemplatesPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="如：学术文献"
-                    className="w-full bg-gray-50/50 border border-transparent focus:bg-white focus:border-teal-500/20 focus:ring-4 focus:ring-teal-500/5 px-6 py-4 rounded-2xl outline-none transition-all text-sm font-bold shadow-inner"
+                    className="w-full bg-gray-50/50 border border-transparent focus:bg-white focus:border-teal-500/20 focus:ring-4 focus:ring-teal-500/5 px-6 py-4 rounded-2xl outline-none transition-all text-base md:text-sm font-bold shadow-inner"
                   />
                 </div>
                 <div className="space-y-4">
@@ -182,7 +182,7 @@ export default function TemplatesPage() {
                     value={type}
                     onChange={(e) => setType(e.target.value)}
                     placeholder="如：职场类"
-                    className="w-full bg-gray-50/50 border border-transparent focus:bg-white focus:border-teal-500/20 focus:ring-4 focus:ring-teal-500/5 px-6 py-4 rounded-2xl outline-none transition-all text-sm font-bold shadow-inner"
+                    className="w-full bg-gray-50/50 border border-transparent focus:bg-white focus:border-teal-500/20 focus:ring-4 focus:ring-teal-500/5 px-6 py-4 rounded-2xl outline-none transition-all text-base md:text-sm font-bold shadow-inner"
                   />
                 </div>
               </div>
@@ -194,7 +194,7 @@ export default function TemplatesPage() {
                   value={promptTemplate}
                   onChange={(e) => setPromptTemplate(e.target.value)}
                   placeholder="请输入具体的 AI 提示词..."
-                  className="w-full bg-gray-50/50 border border-transparent focus:bg-white focus:border-teal-500/20 focus:ring-4 focus:ring-teal-500/5 px-8 py-8 rounded-[32px] outline-none transition-all text-xs font-mono font-bold leading-relaxed resize-none shadow-inner"
+                  className="w-full bg-gray-50/50 border border-transparent focus:bg-white focus:border-teal-500/20 focus:ring-4 focus:ring-teal-500/5 px-8 py-8 rounded-[32px] outline-none transition-all text-base md:text-xs font-mono font-bold leading-relaxed resize-none shadow-inner"
                 />
               </div>
 
@@ -205,7 +205,7 @@ export default function TemplatesPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="描述该模版的适用场景..."
-                  className="w-full bg-gray-50/50 border border-transparent focus:bg-white focus:border-teal-500/20 focus:ring-4 focus:ring-teal-500/5 px-6 py-4 rounded-2xl outline-none transition-all text-xs font-bold leading-relaxed resize-none shadow-inner"
+                  className="w-full bg-gray-50/50 border border-transparent focus:bg-white focus:border-teal-500/20 focus:ring-4 focus:ring-teal-500/5 px-6 py-4 rounded-2xl outline-none transition-all text-base md:text-xs font-bold leading-relaxed resize-none shadow-inner"
                 />
               </div>
             </div>

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { useNotesStore } from '@/store/notes';
 import { RELATION_CONFIG } from '@/lib/relation-config';
-import { ArrowLeft, Edit3, X, AlertCircle, Info, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit3, X, Info, Loader2, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Note } from '@/types';
@@ -40,6 +40,16 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
     if (token) fetchDetail();
   }, [id, token]);
 
+  // 记录阅读历史（为随机漫步提供沉睡数据）
+  useEffect(() => {
+    if (token && id) {
+      fetch(`/api/notes/${id}/view`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      }).catch(() => {}); // 失败时不报错，保证核心阅读体验
+    }
+  }, [id, token]);
+
   const handleRemoveLink = async (targetId: string) => {
     const success = await removeLink(note!.id, targetId);
     if (success) {
@@ -49,6 +59,24 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
       } : null);
     }
     setDeleteLinkId(null);
+  };
+
+  const handleDeleteNote = async () => {
+    if (confirm('确认要永久删除这条笔记吗？此操作不可撤销。')) {
+      try {
+        const res = await fetch(`/api/notes/${note!.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          router.push('/notes');
+        } else {
+          alert('删除失败');
+        }
+      } catch (err) {
+        alert('网络错误');
+      }
+    }
   };
 
   if (isLoading) {
@@ -79,178 +107,154 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
   });
 
   return (
-    <div className="flex flex-col h-full animate-in fade-in duration-500">
-      <div className="flex items-center justify-between mb-8">
+    <div className="flex flex-col h-full animate-in fade-in duration-500 pb-10">
+      {/* 顶部工具栏 - Sticky for Mobile */}
+      <div className="flex items-center justify-between sticky top-[var(--nav-top-h)] bg-[#fdfdfd]/95 backdrop-blur-md z-10 -mx-3 px-3 py-3 border-b border-gray-50 md:static md:bg-transparent md:mx-0 md:p-0 md:border-b-0 md:mb-8 md:items-end">
         <button 
           onClick={() => router.push('/notes')}
-          className="flex items-center gap-1.5 text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors group"
+          className="flex items-center gap-2 h-11 px-2 text-sm font-black text-gray-500 hover:text-gray-900 transition-colors group"
         >
-          <div className="p-2 bg-gray-100 rounded-xl group-hover:bg-gray-200 transition-colors">
+          <div className="p-1.5 bg-gray-100 rounded-lg group-hover:bg-gray-200 transition-colors">
             <ArrowLeft size={18} />
           </div>
-          返回列表
+          <span className="hidden xs:inline">返回</span>
         </button>
 
         <div className="flex items-center gap-2">
           <button 
             onClick={() => router.push(`/notes/new?overwrite=${note.id}`)}
-            className="flex items-center justify-center gap-2 px-4 py-2 border border-teal-200 text-teal-600 rounded-xl hover:bg-teal-50 transition-colors text-sm font-bold shadow-sm"
+            className="h-11 flex items-center gap-2 px-4 bg-white border border-teal-200 text-teal-600 rounded-xl active:bg-teal-50 transition-colors text-xs font-black uppercase tracking-widest shadow-sm"
           >
-            <Edit3 size={16} />
-            更正提炼
+            <Edit3 size={15} />
+            <span className="hidden sm:inline">更正</span>
           </button>
           <button 
-            onClick={() => {
-              if (confirm('确认要永久删除这条笔记吗？此操作不可撤销。')) {
-                const token = localStorage.getItem('auth-storage') 
-                  ? JSON.parse(localStorage.getItem('auth-storage')!).state.token 
-                  : null;
-                fetch(`/api/notes/${note.id}`, {
-                  method: 'DELETE',
-                  headers: { 'Authorization': `Bearer ${token}` }
-                }).then(() => router.push('/notes'));
-              }
-            }}
-            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+            onClick={handleDeleteNote}
+            className="h-11 w-11 flex items-center justify-center text-gray-400 active:text-red-500 active:bg-red-50 rounded-xl transition-all"
             title="删除笔记"
           >
-            <Trash2 size={20} />
+            <Trash2 size={18} />
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-8 mt-4 md:mt-0">
         <div className="flex-1 min-w-0">
-          <div className="bg-white rounded-[40px] p-8 md:p-14 border border-gray-100 shadow-sm space-y-10">
-            <div className="space-y-6">
-              <div className="flex flex-wrap items-center gap-4">
-                <span className="flex items-center px-3 py-1 bg-teal-50 text-teal-600 rounded-full text-[10px] font-black uppercase tracking-widest">
+          <article className="bg-white rounded-2xl md:rounded-[40px] p-4 md:p-14 border border-teal-50/50 md:border-gray-100 shadow-sm space-y-6 md:space-y-10">
+            {/* 标题区 */}
+            <div className="space-y-3 md:space-y-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="px-2.5 py-0.5 bg-teal-50 text-teal-600 rounded-full text-[10px] md:text-[11px] font-black uppercase tracking-widest leading-none">
                   {note.categoryName}
                 </span>
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{formattedDate}</span>
+                <span className="text-[10px] md:text-[11px] text-gray-400 font-bold uppercase tracking-tighter">{formattedDate}</span>
               </div>
-              <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-[1.3] tracking-tight">
+              <h1 className="text-2xl md:text-4xl font-black text-gray-900 leading-snug md:leading-[1.3] tracking-tight">
                 {note.title}
               </h1>
             </div>
 
-            <div className="prose prose-slate max-w-none font-serif
-              [&>h3]:font-sans [&>h3]:text-xl [&>h3]:font-bold [&>h3]:text-gray-900 [&>h3]:mt-8 [&>h3]:mb-4
-              [&>p]:text-gray-800 [&>p]:leading-[2] [&>p]:mb-6 [&>p]:text-[1.1rem] [&>p]:indent-0 [&>p]:tracking-wide
-              [&>hr]:border-gray-200 [&>hr]:my-6
-              [&>ul]:list-none [&>ul]:pl-0
-              [&>ul>li]:relative [&>ul>li]:pl-6 [&>ul>li]:mb-4
-              [&>ul>li::before]:content-[''] [&>ul>li::before]:absolute [&>ul>li::before]:left-0 [&>ul>li::before]:top-[0.8em] [&>ul>li::before]:w-1.5 [&>ul>li::before]:h-1.5 [&>ul>li::before]:bg-gray-400 [&>ul>li::before]:rounded-full
-              [&_strong]:font-bold [&_strong]:text-gray-900
+            {/* 阅读区 (Reader Mode) */}
+            <div className="prose prose-slate max-w-none font-sans
+              [&>h2]:text-xl md:[&>h2]:text-2xl [&>h2]:font-black [&>h2]:text-gray-900 [&>h2]:mt-10 [&>h2]:mb-4
+              [&>h3]:text-lg md:[&>h3]:text-xl [&>h3]:font-black [&>h3]:text-gray-900 [&>h3]:mt-8 [&>h3]:mb-4
+              [&>p]:text-gray-800 [&>p]:leading-relaxed md:[&>p]:leading-relaxed [&>p]:mb-6 [&>p]:text-[16px] md:[&>p]:text-[1.1rem] [&>p]:font-medium
+              [&>hr]:border-gray-100 [&>hr]:my-8
+              [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-6
+              [&>ul>li]:mb-2 [&>ul>li]:text-[16px] md:[&>ul>li]:text-[1.1rem] [&>ul>li]:font-medium
+              [&_strong]:font-black [&_strong]:text-gray-900
+              [&_blockquote]:border-l-4 [&_blockquote]:border-teal-500/20 [&_blockquote]:bg-gray-50/50 [&_blockquote]:p-4 [&_blockquote]:rounded-r-xl [&_blockquote]:italic
+              [&_pre]:bg-gray-900 [&_pre]:text-gray-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:text-xs md:[&_pre]:text-sm [&_pre]:overflow-x-auto
             ">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {note.content}
               </ReactMarkdown>
             </div>
 
-            <div className="flex flex-wrap gap-2 pt-8 border-t border-gray-50">
+            {/* 标签 */}
+            <div className="flex flex-wrap gap-2 pt-6 border-t border-gray-50">
               {note.tags?.map(tag => (
-                <span key={tag} className="px-4 py-1.5 bg-gray-50 text-gray-500 rounded-full text-xs font-bold border border-gray-100 italic">
+                <span key={tag} className="px-2.5 py-1 bg-gray-50 text-gray-500 rounded-lg text-[10px] md:text-xs font-bold border border-gray-100">
                   #{tag}
                 </span>
               ))}
             </div>
-          </div>
+          </article>
         </div>
 
-        <div className="w-full lg:w-[350px] shrink-0">
-          <div className="sticky top-6 space-y-4">
-            <div className="flex items-center justify-between px-2">
-              <h3 className="text-lg font-extrabold text-gray-900">基于语义的关联 ({note.links?.length || 0})</h3>
-            </div>
+        {/* 关联侧边栏 */}
+        <aside className="w-full lg:w-[320px] shrink-0">
+          <div className="sticky top-20 space-y-4">
+            <h3 className="text-sm md:text-lg font-black text-gray-900 tracking-tight px-2 uppercase">相关关联 ({note.links?.length || 0})</h3>
 
             <div className="space-y-3">
               {note.links && note.links.length > 0 ? (
                 note.links.map((link) => {
                   const config = RELATION_CONFIG[link.relationType] || { emoji: '🔗', label: '关联', color: '#94a3b8' };
                   const isUncertain = link.relationConfidence === 'uncertain';
-                  const isInferred = link.relationConfidence === 'inferred';
 
                   return (
                     <div 
                       key={link.targetNoteId}
-                      className={`group relative bg-white border rounded-[20px] p-5 transition-all duration-300 hover:shadow-xl cursor-pointer ${
+                      className={`group relative bg-white border rounded-2xl p-4 transition-all duration-300 active:scale-[0.98] ${
                         isUncertain ? 'opacity-60 grayscale' : 'border-gray-100 shadow-sm'
                       }`}
                       onClick={() => router.push(`/notes/${link.targetNoteId}`)}
                     >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span 
-                            className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border shadow-inner"
-                            style={{ backgroundColor: `${config.color}10`, color: config.color, borderColor: `${config.color}20` }}
-                          >
-                            {config.emoji} {config.label} {Math.round(link.similarityScore * 100)}%
-                          </span>
-                          {isUncertain && (
-                            <span className="flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
-                              <AlertCircle size={10} />
-                              待验证
-                            </span>
-                          )}
-                        </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span 
+                          className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full border"
+                          style={{ backgroundColor: `${config.color}05`, color: config.color, borderColor: `${config.color}15` }}
+                        >
+                          {config.emoji} {config.label}
+                        </span>
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
                             setDeleteLinkId(link.targetNoteId);
                           }}
-                          className="text-gray-200 hover:text-red-500 transition-colors p-1"
+                          className="text-gray-200 active:text-red-500 p-1"
                         >
-                          <X size={16} />
+                          <X size={14} />
                         </button>
                       </div>
-
-                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">
-                        {link.sourceCategoryName}
-                      </div>
-                      <h4 className="text-sm font-black text-gray-900 group-hover:text-teal-600 transition-colors line-clamp-2 leading-snug">
+                      <h4 className="text-sm font-black text-gray-800 line-clamp-2 leading-snug">
                         {link.targetNoteTitle || '加载中...'}
                       </h4>
                     </div>
                   );
                 })
               ) : (
-                <div className="bg-gray-50/50 border border-dashed border-gray-200 rounded-[30px] p-10 text-center flex flex-col items-center">
-                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md mb-4">
-                    <Info size={24} className="text-gray-200" />
-                  </div>
-                  <p className="text-xs text-gray-400 font-bold max-w-[180px] leading-relaxed">暂无关联笔记。随着笔记库丰富，Graphify 会自动建立链接。</p>
+                <div className="bg-gray-50/50 border border-dashed border-gray-200 rounded-2xl p-8 text-center flex flex-col items-center">
+                  <p className="text-[11px] text-gray-400 font-bold max-w-[180px]">暂无自动联想的火花。</p>
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </aside>
       </div>
 
+      {/* 删除关联确认弹窗 */}
       {deleteLinkId && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-sm p-10 space-y-8">
-            <div className="space-y-3 text-center">
-                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <X size={32} />
-                </div>
-              <h3 className="text-xl font-black text-gray-900">撤销这条关联？</h3>
-              <p className="text-sm text-gray-500 font-medium">撤销后，你可以通过重新运行生成来尝试找回这条链接。</p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <button 
-                onClick={() => handleRemoveLink(deleteLinkId)}
-                className="w-full py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all shadow-lg active:scale-95"
-              >
-                确认撤销
-              </button>
-              <button 
-                onClick={() => setDeleteLinkId(null)}
-                className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-gray-100 transition-all"
-              >
-                取消
-              </button>
-            </div>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-t-[32px] md:rounded-[40px] shadow-2xl w-full max-w-sm p-8 space-y-6 animate-in slide-in-from-bottom duration-300">
+             <div className="text-center space-y-4">
+              <p className="text-sm font-black text-gray-900 uppercase tracking-widest">确认撤销关联？</p>
+              <div className="flex flex-col gap-2">
+                <button 
+                  onClick={() => handleRemoveLink(deleteLinkId)}
+                  className="w-full py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95"
+                >
+                  确认撤销
+                </button>
+                <button 
+                  onClick={() => setDeleteLinkId(null)}
+                  className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl font-black uppercase text-xs"
+                >
+                  取消
+                </button>
+              </div>
+             </div>
           </div>
         </div>
       )}

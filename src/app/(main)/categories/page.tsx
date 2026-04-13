@@ -130,7 +130,7 @@ export default function CategoriesPage() {
 
   return (
     <div className="flex flex-col h-full space-y-10 animate-in fade-in duration-500">
-      <div className="flex items-end justify-between px-2">
+      <div className="hidden md:flex items-end justify-between px-2">
         <div className="space-y-1">
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">分类管理</h1>
           <p className="text-sm font-bold text-gray-400">配置你的专属知识提炼引擎</p>
@@ -219,7 +219,7 @@ export default function CategoriesPage() {
       {!isLoading && categories.length === 0 && (
         <div className="py-24 text-center bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200 space-y-4">
           <p className="text-gray-900 font-black uppercase tracking-widest">暂无领域分类</p>
-          <button onClick={openCreateModal} className="text-sm font-bold text-teal-600 hover:underline">点击创建你的第一个提炼引擎</button>
+          <button onClick={openCreateModal} className="hidden md:inline-block text-sm font-bold text-teal-600 hover:underline">点击创建你的第一个提炼引擎</button>
         </div>
       )}
 
@@ -297,7 +297,7 @@ export default function CategoriesPage() {
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           placeholder="例如：产品设计, 心理学视角..."
-                          className="w-full bg-gray-50/50 border border-transparent focus:bg-white focus:border-teal-500/20 focus:ring-4 focus:ring-teal-500/5 px-6 py-4 rounded-2xl outline-none transition-all text-sm font-bold shadow-inner"
+                          className="w-full bg-gray-50/50 border border-transparent focus:bg-white focus:border-teal-500/20 focus:ring-4 focus:ring-teal-500/5 px-6 py-4 rounded-2xl outline-none transition-all text-base md:text-sm font-bold shadow-inner"
                         />
                       </div>
                     </div>
@@ -456,7 +456,7 @@ export default function CategoriesPage() {
                                         min="3"
                                         value={synthesisTriggerCount}
                                         onChange={(e) => setSynthesisTriggerCount(Math.max(3, parseInt(e.target.value) || 3))}
-                                        className="w-full bg-gray-50/50 border border-transparent px-6 py-4 rounded-2xl outline-none font-black text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        className="w-full bg-gray-50/50 border border-transparent px-6 py-4 rounded-2xl outline-none font-black text-base md:text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     />
                                     <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 uppercase">篇笔记</span>
                                 </div>

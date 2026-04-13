@@ -12,7 +12,8 @@
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:stop": "pm2 stop graphify-watcher",
-    "pm2:logs": "pm2 logs graphify-watcher"
+    "pm2:logs": "pm2 logs graphify-watcher",
+    "generate-icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",
@@ -44,6 +45,7 @@
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
