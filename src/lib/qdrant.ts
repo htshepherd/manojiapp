@@ -6,6 +6,8 @@ declare global {
 
 export const qdrant = global._qdrantClient ?? new QdrantClient({
   url: process.env.QDRANT_URL,
+  // 针对服务器与客户端版本不一致的情况（生产环境常见），显式禁用兼容性自检
+  checkCompatibility: false,
   // 若 Qdrant 实例开启了 API Key 鉴权（生产环境推荐），通过环境变量传入
   ...(process.env.QDRANT_API_KEY ? { apiKey: process.env.QDRANT_API_KEY } : {}),
 });
