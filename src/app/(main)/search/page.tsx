@@ -49,7 +49,7 @@ export default function SearchPage() {
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="relative px-2">
           <div className="relative group">
-            <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-blue-500 rounded-3xl blur-xl opacity-0 group-focus-within:opacity-10 transition-opacity duration-500" />
+            <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-teal-500 to-blue-500 rounded-3xl blur-xl opacity-0 group-focus-within:opacity-10 transition-opacity duration-500" />
             <input
               type="text"
               value={query}

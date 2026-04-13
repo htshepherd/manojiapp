@@ -283,13 +283,6 @@ export default function WanderPage() {
         </div>
       </div>
 
-      {/* 静默加载下一批提示 */}
-      {isLoading && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 bg-gray-900/90 backdrop-blur-md text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-2xl animate-in slide-in-from-bottom-4 ml-[130px] md:ml-0">
-            <Loader2 size={12} className="animate-spin text-teal-400" />
-            <span>正在载入灵感...</span>
-          </div>
-      )}
     </div>
   );
 }

@@ -26,8 +26,13 @@ export const useSearchStore = create<SearchState>((set) => ({
     set({ isLoading: true });
     
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const res = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query })
       });
       const data = await res.json();
       set({ results: data.results || [], isLoading: false });

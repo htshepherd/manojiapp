@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     // 批量查询 PostgreSQL
     const noteIds = qdrantResults.map(r => r.note_id);
     const dbResult = await db.query(
-      `SELECT id, title, content, tags, category_name, created_at
+      `SELECT id, title, content, tags, category_id, category_name, created_at
        FROM notes
        WHERE id = ANY($1) AND status = 'active' AND user_id = $2`,
       [noteIds, userId]
@@ -59,12 +59,13 @@ export async function POST(req: NextRequest) {
       .map(r => {
         const note = noteMap.get(r.note_id);
         return {
-          noteId: note.id,
+          id: note.id,
           title: note.title,
-          preview: generatePreview(note.content, 100),
+          content: note.content,
           tags: note.tags,
+          categoryId: note.category_id,
           categoryName: note.category_name,
-          similarityScore: r.score,
+          score: r.score,
           createdAt: note.created_at
         };
       });

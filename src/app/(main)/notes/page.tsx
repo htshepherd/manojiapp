@@ -137,12 +137,6 @@ export default function NotesPage() {
                 </div>
               </div>
 
-              {/* 仅在桌面端显示的链接详情按钮 */}
-              <div className="hidden md:flex mt-8 pt-6 border-t border-gray-50 items-center justify-between">
-                <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-teal-600 group-hover:text-white transition-all duration-500 shadow-inner">
-                  {/* 此处可放置装饰或保持空位 */}
-                </div>
-              </div>
             </Link>
           ))}
         </div>
