@@ -1,25 +1,30 @@
 
-import dotenv from 'dotenv';
+import * as fs from 'fs';
 import * as path from 'path';
 import { Pool } from 'pg';
 
-// 1. 强制按优先级寻找配置文件
-const envPath = path.resolve(process.cwd(), '.env.production');
-console.log(`[Info] 正在加载配置文件: ${envPath}`);
-dotenv.config({ path: envPath });
-
-if (!process.env.DATABASE_URL) {
-    console.error('[Error] 无法从 .env.production 读取 DATABASE_URL，请确认文件路径或内容正确。');
-    process.exit(1);
-}
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
-
 async function run() {
     try {
-        console.log('[1/2] 正在同步数据库分类名称...');
+        const envPath = path.resolve(process.cwd(), '.env.production');
+        console.log(`[Info] 正在原始读取文件: ${envPath}`);
+        
+        const content = fs.readFileSync(envPath, 'utf-8');
+        
+        // 使用正则直接抓取，忽略任何环境变量注入
+        const match = content.match(/^DATABASE_URL=(.+)$/m);
+        if (!match || !match[1]) {
+            console.error('[Error] 在文件中没找到 DATABASE_URL=xxx 这一行。内容预览:', content.substring(0, 50));
+            process.exit(1);
+        }
+        
+        const dbUrl = match[1].trim().replace(/^["']|["']$/g, '');
+        console.log(`[Info] 连接字符串提取成功 (长度: ${dbUrl.length})`);
+
+        const pool = new Pool({
+            connectionString: dbUrl,
+        });
+
+        console.log('[1/2] 正在强制同步数据库分类名称...');
         const syncResult = await pool.query(`
             UPDATE notes 
             SET category_name = c.name 
@@ -27,17 +32,14 @@ async function run() {
             WHERE notes.category_id = c.id
         `);
         console.log(`✅ 同步完成，影响行数: ${syncResult.rowCount}`);
-
-        console.log('[2/2] 数据已准备就绪。');
-        console.log('\n--- 接下来请执行 ---');
-        console.log('pm2 restart graphify-watcher');
-        console.log('--------------------\n');
-
-    } catch (err) {
-        console.error('❌ 执行失败:', err);
-    } finally {
+        
         await pool.end();
-        process.exit();
+        console.log('[2/2] 请务必执行: pm2 restart graphify-watcher');
+        process.exit(0);
+
+    } catch (err: any) {
+        console.error('❌ 执行失败:', err.message);
+        process.exit(1);
     }
 }
 

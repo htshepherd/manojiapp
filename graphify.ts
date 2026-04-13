@@ -13,21 +13,40 @@ import * as path from 'path';
 import * as http from 'http';
 import * as https from 'https';
 import { watch } from 'fs';
-import dotenv from 'dotenv';
-
-// 加载环境变量
-dotenv.config({ path: '.env.local' });
-dotenv.config({ path: '.env.production' });
-dotenv.config(); // 默认 .env
 
 // ─── 配置 ────────────────────────────────────────────────────────────────────
+
+import dotenv from 'dotenv';
+
+// ─── 配置初始化 ─────────────────────────────────────────────────────────────
+function initConfig() {
+  const env = process.env.NODE_ENV || 'development';
+  const result = dotenv.config({ 
+    path: env === 'production' ? '.env.production' : '.env.local' 
+  });
+  
+  if (result.error) {
+    console.warn(`[Config] 未能读取配置文件: ${result.error.message}`);
+  }
+  
+  const required = ['DATABASE_URL', 'GRAPHIFY_WEBHOOK_SECRET'];
+  const missing = required.filter(key => !process.env[key]);
+  
+  if (missing.length > 0) {
+    console.error(`[Fatal] 缺少关键配置项: ${missing.join(', ')}`);
+    // 在生产环境下，缺少关键配置应立即报错停止，防止产生脏数据
+    if (env === 'production') process.exit(1);
+  }
+}
+
+initConfig();
 
 const RAW_NOTES_DIR = process.env.RAW_NOTES_DIR || './notes/raw';
 const OUTPUT_DIR    = process.env.GRAPHIFY_OUT_DIR || './graphify-out';
 const WEBHOOK_URL   = process.env.GRAPHIFY_WEBHOOK_URL || 'http://localhost:3000/api/internal/graphify-sync';
 const WEBHOOK_SECRET = process.env.GRAPHIFY_WEBHOOK_SECRET || '';
 const DATABASE_URL  = process.env.DATABASE_URL || '';
-const DEBOUNCE_MS   = 3000; // 文件变化后等待3秒再统一触发
+const DEBOUNCE_MS   = 3000;
 
 // ─── 工具函数 ────────────────────────────────────────────────────────────────
 

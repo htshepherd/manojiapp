@@ -39,31 +39,60 @@ export async function PUT(
         return NextResponse.json({ error: '分类名称已存在' }, { status: 400 });
       }
       newRawDir = renameRawDir(category.raw_dir, name);
-      // 同步更新所有笔记中的冗余分类名称
-      await db.query(
-        `UPDATE notes SET category_name = $1 WHERE category_id = $2`,
-        [name, id]
+
+      // 开始事务：确保分类和笔记同步更新成功
+      await db.query('BEGIN');
+      try {
+        await db.query(
+          `UPDATE notes SET category_name = $1 WHERE category_id = $2`,
+          [name, id]
+        );
+        await db.query(
+          `UPDATE categories SET
+            name = $1,
+            granularity = $2,
+            prompt_template = $3,
+            link_threshold = $4,
+            synthesis_trigger_count = $5,
+            raw_dir = $6,
+            updated_at = NOW()
+           WHERE id = $7`,
+          [name, granularity, promptTemplate, linkThreshold, synthesisTriggerCount, newRawDir, id]
+        );
+        await db.query('COMMIT');
+      } catch (err) {
+        await db.query('ROLLBACK');
+        throw err;
+      }
+      
+      // 重新查询以获得完整返回结构
+      const finalResult = await db.query(
+        `SELECT id, name, granularity,
+          prompt_template AS "promptTemplate",
+          link_threshold AS "linkThreshold",
+          synthesis_trigger_count AS "synthesisTriggerCount",
+          created_at AS "createdAt"
+         FROM categories WHERE id = $1`, [id]
       );
+      return NextResponse.json({ category: finalResult.rows[0] });
     }
 
-    // 执行更新，并强制返回 camelCase 字段
+    // 普通更新逻辑
     const result = await db.query(
       `UPDATE categories SET
-        name = $1,
-        granularity = $2,
-        prompt_template = $3,
-        link_threshold = $4,
-        synthesis_trigger_count = $5,
-        raw_dir = $6,
+        granularity = $1,
+        prompt_template = $2,
+        link_threshold = $3,
+        synthesis_trigger_count = $4,
         updated_at = NOW()
-       WHERE id = $7 
+       WHERE id = $5 
        RETURNING 
         id, name, granularity,
         prompt_template AS "promptTemplate",
         link_threshold AS "linkThreshold",
         synthesis_trigger_count AS "synthesisTriggerCount",
         created_at AS "createdAt"`,
-      [name, granularity, promptTemplate, linkThreshold, synthesisTriggerCount, newRawDir, id]
+      [granularity, promptTemplate, linkThreshold, synthesisTriggerCount, id]
     );
     return NextResponse.json({ category: result.rows[0] });
   } catch (err: any) {
