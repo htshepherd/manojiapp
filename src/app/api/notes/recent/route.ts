@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
               category_id AS "categoryId", 
               category_name AS "categoryName", 
               title, tags, 
-              LEFT(content, 200) AS preview,
+              SUBSTRING(content, 1, 100) AS preview,
               created_at AS "createdAt",
               updated_at AS "updatedAt"
        FROM notes WHERE user_id = $1 AND status = 'active'

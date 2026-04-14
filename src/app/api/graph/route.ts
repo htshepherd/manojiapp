@@ -10,16 +10,20 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const categoryId = searchParams.get('category_id');
 
-    const graphPath = path.resolve(process.env.GRAPHIFY_OUT_DIR!, 'graph.json');
-    
-    // 如果 graph.json 还不存在（Graphify 尚未运行），fallback 到直接读数据库
+    const outDir = process.env.GRAPHIFY_OUT_DIR;
+    if (!outDir) {
+      console.warn('[graph-api] GRAPHIFY_OUT_DIR 环境变量未配置，使用数据库模式。');
+      return await fallbackFromDB(userId, categoryId);
+    }
+
+    const graphPath = path.resolve(outDir, 'graph.json');
     let graphify: any = null;
     try {
       await fs.promises.access(graphPath);
       const data = await fs.promises.readFile(graphPath, 'utf-8');
       graphify = JSON.parse(data);
     } catch (err) {
-      console.warn('graph.json not found or invalid:', err);
+      console.warn('[graph-api] graph.json 不存在或解析失败，使用数据库 fallback:', err);
       return await fallbackFromDB(userId, categoryId);
     }
 

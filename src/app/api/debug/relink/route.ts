@@ -5,8 +5,16 @@ import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(req: NextRequest) {
   try {
+    // 问题 53: 增加内部密钥验证，防止公网非法调用触发全库检索
+    const secret = req.headers.get('x-debug-secret');
+    if (!secret || secret !== process.env.INTERNAL_SECRET) {
+      return NextResponse.json({ error: 'Unauthorized: Missing or invalid debug secret' }, { status: 401 });
+    }
+
+    // 问题 54: 必须过滤 status = 'active'，防止为已软删除的笔记重建连线
     const notesResult = await db.query(
-      `SELECT id, user_id, category_id, category_name, vector_id FROM notes WHERE vector_id IS NOT NULL`
+      `SELECT id, user_id, category_id, category_name, vector_id FROM notes 
+       WHERE vector_id IS NOT NULL AND status = 'active'`
     );
     const notes = notesResult.rows;
 
@@ -32,10 +40,10 @@ export async function POST(req: NextRequest) {
       // Search for similar notes across the user's library
       const similarNotes = await searchSimilar(vector, note.user_id, undefined, 10);
 
-      // Get category threshold
+      // 问题 59: 增加 user_id 约束，作为深度防御防止读到他人分类配置
       const catResult = await db.query(
-        `SELECT link_threshold FROM categories WHERE id = $1`,
-        [note.category_id]
+        `SELECT link_threshold FROM categories WHERE id = $1 AND user_id = $2`,
+        [note.category_id, note.user_id]
       );
       const threshold = catResult.rows[0]?.link_threshold || 0.6;
 

@@ -9,6 +9,8 @@ import ReactFlow, {
   MarkerType,
   ConnectionMode
 } from 'react-flow-renderer';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useAuthStore } from '@/store/auth';
 import { useCategoriesStore } from '@/store/categories';
 import { RELATION_CONFIG } from '@/lib/relation-config';
@@ -44,9 +46,9 @@ export default function GraphPage() {
       const data = await res.json();
       
       const rfNodes = (data.nodes || []).map((node: any, index: number) => {
-          // 简单的力导向初始布局
           const angle = index * (2 * Math.PI / data.nodes.length);
-          const radius = 250 + Math.random() * 50;
+          // 问题 15: 去掉随机数，关联越多半径越大（确定性布局）
+          const radius = 250 + (node.linkCount || 0) * 5;
           return {
             id: node.id,
             type: 'knowledge',
@@ -98,7 +100,8 @@ export default function GraphPage() {
   useEffect(() => {
     fetchCategories();
     if (token) fetchGraph();
-  }, [token, filterCategoryId, fetchGraph, fetchCategories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, filterCategoryId]); // 问题 16: 从依赖移除 fetchGraph，避免切换分类时的双重触发
 
   // Interaction
   const onNodeClick = useCallback(async (event: any, node: any) => {
@@ -144,7 +147,10 @@ export default function GraphPage() {
                 知识节点预览
               </span>
               <button 
-                onClick={() => setSelectedNoteId(null)}
+                onClick={() => {
+                    setSelectedNoteId(null);
+                    setSelectedNote(null); // 问题 17: 关闭时同时清空详情，解决下次打开时的闪烁
+                }}
                 className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors"
               >
                 <X size={20} />
@@ -161,8 +167,13 @@ export default function GraphPage() {
                 </h2>
               </div>
 
-              <div className="text-sm text-gray-500 leading-relaxed line-clamp-[15] font-medium italic">
-                {selectedNote.content.replace(/[#\-\[\]]/g, '')}
+              {/* 问题 21: 使用 ReactMarkdown 渲染或更完整的预览 */}
+              <div className="prose prose-slate prose-sm max-w-none text-gray-500 leading-relaxed line-clamp-[12] font-medium italic
+                [&_p]:mb-4 [&_p]:last:mb-0
+              ">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {selectedNote.content}
+                </ReactMarkdown>
               </div>
 
               <div className="flex flex-wrap gap-2">

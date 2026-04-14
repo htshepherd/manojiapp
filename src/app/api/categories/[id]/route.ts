@@ -20,7 +20,6 @@ export async function PUT(
     }
     const category = existing.rows[0];
 
-    // 显式解析前端发来的字段
     const body = await req.json();
     const name = body.name || category.name;
     const granularity = body.granularity || category.granularity;
@@ -30,71 +29,55 @@ export async function PUT(
 
     let newRawDir = category.raw_dir;
 
-    if (name && name !== category.name) {
-      const dup = await db.query(
-        `SELECT id FROM categories WHERE user_id = $1 AND name = $2 AND id != $3`,
-        [userId, name, id]
-      );
-      if (dup.rows.length > 0) {
-        return NextResponse.json({ error: '分类名称已存在' }, { status: 400 });
-      }
-      newRawDir = renameRawDir(category.raw_dir, name);
-
-      // 开始事务：确保分类和笔记同步更新成功
-      await db.query('BEGIN');
-      try {
+    // 开启事务处理所有更新
+    await db.query('BEGIN');
+    try {
+      if (name && name !== category.name) {
+        const dup = await db.query(
+          `SELECT id FROM categories WHERE user_id = $1 AND name = $2 AND id != $3`,
+          [userId, name, id]
+        );
+        if (dup.rows.length > 0) {
+          await db.query('ROLLBACK');
+          return NextResponse.json({ error: '分类名称已存在' }, { status: 400 });
+        }
+        // 问题 35: 必须 await renameRawDir，否则 newRawDir 是 Promise 对象
+        newRawDir = await renameRawDir(category.raw_dir, name);
+        
         await db.query(
           `UPDATE notes SET category_name = $1 WHERE category_id = $2`,
           [name, id]
         );
-        await db.query(
-          `UPDATE categories SET
-            name = $1,
-            granularity = $2,
-            prompt_template = $3,
-            link_threshold = $4,
-            synthesis_trigger_count = $5,
-            raw_dir = $6,
-            updated_at = NOW()
-           WHERE id = $7`,
-          [name, granularity, promptTemplate, linkThreshold, synthesisTriggerCount, newRawDir, id]
-        );
-        await db.query('COMMIT');
-      } catch (err) {
-        await db.query('ROLLBACK');
-        throw err;
       }
-      
-      // 重新查询以获得完整返回结构
-      const finalResult = await db.query(
-        `SELECT id, name, granularity,
-          prompt_template AS "promptTemplate",
-          link_threshold AS "linkThreshold",
-          synthesis_trigger_count AS "synthesisTriggerCount",
-          created_at AS "createdAt"
-         FROM categories WHERE id = $1`, [id]
+
+      await db.query(
+        `UPDATE categories SET
+          name = $1,
+          granularity = $2,
+          prompt_template = $3,
+          link_threshold = $4,
+          synthesis_trigger_count = $5,
+          raw_dir = $6,
+          updated_at = NOW()
+         WHERE id = $7`,
+        [name, granularity, promptTemplate, linkThreshold, synthesisTriggerCount, newRawDir, id]
       );
-      return NextResponse.json({ category: finalResult.rows[0] });
+      
+      await db.query('COMMIT');
+    } catch (err) {
+      await db.query('ROLLBACK');
+      throw err;
     }
 
-    // 普通更新逻辑
-    const result = await db.query(
-      `UPDATE categories SET
-        granularity = $1,
-        prompt_template = $2,
-        link_threshold = $3,
-        synthesis_trigger_count = $4,
-        updated_at = NOW()
-       WHERE id = $5 
-       RETURNING 
-        id, name, granularity,
+    const finalResult = await db.query(
+      `SELECT id, name, granularity,
         prompt_template AS "promptTemplate",
         link_threshold AS "linkThreshold",
         synthesis_trigger_count AS "synthesisTriggerCount",
-        created_at AS "createdAt"`,
-      [granularity, promptTemplate, linkThreshold, synthesisTriggerCount, id]
+        created_at AS "createdAt"
+       FROM categories WHERE id = $1`, [id]
     );
-    return NextResponse.json({ category: result.rows[0] });
+    return NextResponse.json({ category: finalResult.rows[0] });
   } catch (err: any) {
     console.error('Category Update Error:', err);
     return NextResponse.json({ error: err.message }, { status: err.status || 500 });
@@ -123,7 +106,8 @@ export async function DELETE(
     const vectorIds = notes.rows.map((n: any) => n.vector_id).filter(Boolean);
 
     if (vectorIds.length > 0) await deleteVectors(vectorIds);
-    deleteRawDir(category.raw_dir);
+    // 问题 36: 必须 await deleteRawDir，否则物理目录不会被删除
+    await deleteRawDir(category.raw_dir);
 
     await db.query(`DELETE FROM categories WHERE id = $1`, [id]);
     return NextResponse.json({ success: true });

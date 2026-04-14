@@ -23,9 +23,8 @@ module.exports = {
     {
       name: 'graphify-watcher',
       script: 'graphify.ts',
-      interpreter: 'node',
-      // 使用 tsx 注册器以直接运行 ts 文件，这是目前最工程化的做法
-      interpreter_args: '--import tsx',
+      interpreter: 'node_modules/.bin/tsx', // 直接用 tsx 可执行文件，兼容 Node 18/20+
+      interpreter_args: '',
       cwd: __dirname,
       env: {
         NODE_ENV: 'production',

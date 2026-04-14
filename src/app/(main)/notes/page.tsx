@@ -29,18 +29,17 @@ const timeAgo = (dateString: string) => {
 
 export default function NotesPage() {
   const { activeCategory, setActiveCategory } = useCategoryContext();
-  const { notes, fetchNotes, isLoading } = useNotesStore();
+  const { notes, fetchNotes, clearNotes, isLoading } = useNotesStore();
   const { categories, fetchCategories } = useCategoriesStore();
 
   useEffect(() => {
     fetchCategories();
+    clearNotes(); // 切换时先清空，避免旧数据闪烁
     fetchNotes(activeCategory === "all" ? undefined : activeCategory);
-  }, [activeCategory, fetchNotes, fetchCategories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory]);
 
-  // 本地过滤以保持响应
-  const displayedNotes = useMemo(() => {
-    return activeCategory === "all" ? notes : notes.filter(n => n.categoryId === activeCategory);
-  }, [notes, activeCategory]);
+  const displayedNotes = notes;
 
   return (
     <div className="flex flex-col h-full space-y-4 md:space-y-10 animate-in fade-in duration-500">

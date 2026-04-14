@@ -13,9 +13,10 @@ if (!process.env.DATABASE_URL) {
   throw new Error('[db] 缺少必要环境变量：DATABASE_URL');
 }
 
+// 不在模块顶层 exit：next build 阶段 NODE_ENV=production 但环境变量可能尚未注入，
+// 在此 exit 会直接杀死 build 进程。具体 API 路由在运行时自行验证。
 if (!process.env.GRAPHIFY_WEBHOOK_SECRET || process.env.GRAPHIFY_WEBHOOK_SECRET.length < 16) {
-  console.error('[db] CRITICAL: GRAPHIFY_WEBHOOK_SECRET 必须配置且长度超过16位');
-  if (process.env.NODE_ENV === 'production') process.exit(1);
+  console.warn('[db] GRAPHIFY_WEBHOOK_SECRET 未配置或强度不足（需至少16位），webhook 鉴权将失败');
 }
 
 export const db = global._pgPool ?? new Pool({
@@ -25,6 +26,5 @@ export const db = global._pgPool ?? new Pool({
   connectionTimeoutMillis: 5000
 });
 
-if (process.env.NODE_ENV !== 'production') {
-  global._pgPool = db;
-}
+// 无论生产/开发都缓存：防止多次 import（HMR / 多 Worker）重复创建 Pool
+global._pgPool = db;

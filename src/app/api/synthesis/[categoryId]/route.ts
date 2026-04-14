@@ -14,22 +14,36 @@ export async function GET(
     const { categoryId } = await params;
 
     const catResult = await db.query(
-      `SELECT name, note_count FROM categories WHERE id = $1 AND user_id = $2`,
+      `SELECT name FROM categories WHERE id = $1 AND user_id = $2`,
       [categoryId, userId]
     );
     if (catResult.rows.length === 0) {
       return NextResponse.json({ error: '无权操作' }, { status: 403 });
     }
-    const { name, note_count } = catResult.rows[0];
+    const { name } = catResult.rows[0];
 
-    // 读取 wiki 文件 (使用与 Graphify 相同的安全文件名逻辑 + path.basename 防路径穿越)
+    // 实时 COUNT （替代可能过时的 note_count 冒余字段）
+    const countResult = await db.query(
+      `SELECT COUNT(*) AS count FROM notes WHERE category_id = $1 AND user_id = $2 AND status = 'active'`,
+      [categoryId, userId]
+    );
+    const basedOnCount = parseInt(countResult.rows[0].count) || 0;
+
+    // 问题 7: GRAPHIFY_OUT_DIR 未配置时用相对路径可能指向错误位置，消除静默失败。
+    const outDir = process.env.GRAPHIFY_OUT_DIR;
+    if (!outDir) {
+      console.error('[synthesis-api] GRAPHIFY_OUT_DIR 未配置');
+      return NextResponse.json({ error: '服务器配置错误' }, { status: 500 });
+    }
+    const wikiDir = path.resolve(outDir, 'wiki');
     const safeFileName = path.basename(name.replace(/[\/\\:*?"<>|]/g, '_'));
-    const wikiDir = path.resolve(process.env.GRAPHIFY_OUT_DIR || './graphify-out', 'wiki');
     const wikiPath = path.join(wikiDir, `${safeFileName}.md`);
 
-    // 额外校验：确保最终路径仍在 wiki 目录内（防止 .. 绕过）
-    if (!wikiPath.startsWith(wikiDir)) {
-      console.error(`[synthesis-api] 路径穿越嫌疑，已拒绝：${wikiPath}`);
+    // 问题 6: 用 path.relative 替代 startsWith
+    // startsWith 在 wikiDir 末尾无斜杠时，攻击者可构造 wikiDir + '-evil/...' 绕过
+    const relative = path.relative(wikiDir, wikiPath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      console.error(`[synthesis-api] 路径穿越嵌疑，已拒绝：${wikiPath}`);
       return NextResponse.json({ error: '非法请求' }, { status: 400 });
     }
 
@@ -59,7 +73,7 @@ export async function GET(
       categoryName: name,
       aiContent: ai_content,
       userAnnotation: synth?.user_annotation || '',
-      basedOnCount: note_count,
+      basedOnCount,
       generatedAt: synth?.generated_at || null,
       updatedAt: synth?.updated_at || new Date().toISOString()
     };

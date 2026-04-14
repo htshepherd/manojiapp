@@ -12,8 +12,9 @@ export default function SynthesisPage({ params }: { params: Promise<{ categoryId
   const { categoryId } = use(params);
   const router = useRouter();
   
-  const { syntheses, fetchSynthesis, updateAnnotation, isLoading } = useSynthesisStore();
-  const { categories, fetchCategories } = useCategoriesStore();
+  const { syntheses, fetchSynthesis, updateAnnotation, isLoading: synthesisLoading } = useSynthesisStore();
+  const { categories, fetchCategories, isLoading: categoriesLoading } = useCategoriesStore();
+  const token = useAuthStore(state => state.token);
   
   const category = categories.find(c => c.id === categoryId);
   const synthesis = syntheses[categoryId];
@@ -25,8 +26,10 @@ export default function SynthesisPage({ params }: { params: Promise<{ categoryId
 
   useEffect(() => {
     fetchCategories();
-    fetchSynthesis(categoryId);
-  }, [categoryId, fetchCategories, fetchSynthesis]);
+    if (token) {
+        fetchSynthesis(categoryId, token);
+    }
+  }, [categoryId, fetchCategories, fetchSynthesis, token]);
 
   useEffect(() => {
     if (synthesis) {
@@ -34,7 +37,7 @@ export default function SynthesisPage({ params }: { params: Promise<{ categoryId
     }
   }, [synthesis]);
 
-  if (!category && !isLoading) {
+  if (!categoriesLoading && !category) {
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
             <p className="text-gray-500 font-bold text-sm">该分类不存在</p>
@@ -51,7 +54,7 @@ export default function SynthesisPage({ params }: { params: Promise<{ categoryId
   const handleSave = async () => {
     if (!synthesis) return;
     setIsSaving(true);
-    const success = await updateAnnotation(synthesis.id, categoryId, annotation);
+    const success = await updateAnnotation(categoryId, annotation, token);
     setIsSaving(false);
     if (success) {
         setIsEditing(false);
@@ -104,7 +107,7 @@ export default function SynthesisPage({ params }: { params: Promise<{ categoryId
             </button>
         </div>
 
-        {isLoading ? (
+        {synthesisLoading ? (
             <div className="flex flex-col items-center justify-center py-20 md:py-32 space-y-4">
                 <Loader2 className="animate-spin text-teal-600" size={32} />
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">正在调取结构化综述...</p>

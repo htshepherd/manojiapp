@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { seedDefaultTemplates } from '@/scripts/seed-templates';
-
 export async function GET(req: NextRequest) {
   try {
     const userId = await requireAuth(req);
-    await seedDefaultTemplates(userId);  // 幂等初始化
     const result = await db.query(
       `SELECT * FROM prompt_templates WHERE user_id = $1
        ORDER BY created_at DESC`, [userId]

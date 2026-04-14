@@ -15,6 +15,7 @@ interface NotesState {
   deleteNote: (id: string) => Promise<boolean>;
   removeLink: (noteId: string, targetNoteId: string) => Promise<boolean>;
   setPending: (id: string | null, until: string | null) => void;
+  clearNotes: () => void;
 }
 
 export const useNotesStore = create<NotesState>((set, get) => ({
@@ -22,6 +23,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   isLoading: false,
   pendingNoteId: null,
   pendingUntil: null,
+
+  clearNotes: () => set({ notes: [] }),
 
   fetchNotes: async (categoryId) => {
     const token = useAuthStore.getState().token;

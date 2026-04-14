@@ -21,11 +21,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '缺少鉴权凭证' }, { status: 401 });
   }
 
-  const a = Buffer.from(secret);
-  const b = Buffer.from(expected);
-  
-  // 使用 timingSafeEqual 防止时序攻击
-  const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
+  // 问题 5: 先 HMAC hash 再比较，彻底消除长度泄露
+  // a.length === b.length 短路运算会泄露密锂长度信息
+  const compareKey = 'graphify-secret-compare';
+  const aHash = crypto.createHmac('sha256', compareKey).update(secret).digest();
+  const bHash = crypto.createHmac('sha256', compareKey).update(expected).digest();
+  const valid = crypto.timingSafeEqual(aHash, bHash);
   if (!valid) {
     return NextResponse.json({ error: '无效的 Webhook 密钥' }, { status: 401 });
   }
@@ -55,8 +56,8 @@ export async function POST(req: NextRequest) {
   let skipped = 0;
 
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  
-  // 优化：批量预查所有涉及的笔记（去重 & 格式检查）
+
+  // 批量预查所有涉及的笔记（去重 & 格式检查）
   const allNoteIds = Array.from(new Set(
     edges.flatMap(e => [e.source, e.target]).filter(id => UUID_RE.test(id))
   ));
@@ -66,6 +67,26 @@ export async function POST(req: NextRequest) {
     [allNoteIds]
   );
   const noteOwnerMap = new Map(notesResult.rows.map(r => [r.id, r.user_id]));
+
+  // 问题 4: 消除 N+1 —— 批量预查所有 user_deleted=true 的连线
+  // 使用 unnest 双列 + JOIN 安全参数化，避免逐条 SELECT
+  const validPairs = edges.filter(e => UUID_RE.test(e.source) && UUID_RE.test(e.target));
+  const deletedPairSet = new Set<string>();
+  if (validPairs.length > 0) {
+    const sources = validPairs.map(e => e.source);
+    const targets = validPairs.map(e => e.target);
+    const deletedResult = await db.query(
+      `SELECT nl.note_id, nl.target_note_id
+       FROM note_links nl
+       JOIN unnest($1::uuid[], $2::uuid[]) AS p(src, tgt)
+         ON nl.note_id = p.src AND nl.target_note_id = p.tgt
+       WHERE nl.user_deleted = true`,
+      [sources, targets]
+    );
+    deletedResult.rows.forEach((r: any) => {
+      deletedPairSet.add(`${r.note_id}::${r.target_note_id}`);
+    });
+  }
 
   for (const edge of edges) {
     const { source, target } = edge;
@@ -85,23 +106,19 @@ export async function POST(req: NextRequest) {
       continue; // 笔记不存在、不活跃或跨用户关联
     }
 
-    // 检查用户是否手动撤销过（目前保留点查询，因涉及复合键冲突逻辑）
-    const existing = await db.query(
-      `SELECT id, user_deleted FROM note_links WHERE note_id = $1 AND target_note_id = $2`,
-      [source, target]
-    );
-
-    if (existing.rows.length > 0 && existing.rows[0].user_deleted) {
+    // 用户已手动撤销过此连线，跳过（O(1) Map 查找，无额外 DB 查询）
+    if (deletedPairSet.has(`${source}::${target}`)) {
       skipped++;
       continue;
     }
 
     const relationType = mapRelationType(edge.relationType, edge.relationConfidence);
 
+    // 问题 11: id 改用数据库端 gen_random_uuid()，避免 graphify 生成的 id 与已有主键碰撞
     await db.query(
       `INSERT INTO note_links 
        (id, note_id, target_note_id, relation_type, relation_confidence, similarity_score, source_category_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6)
        ON CONFLICT (note_id, target_note_id) 
        DO UPDATE SET 
          relation_type = EXCLUDED.relation_type,
@@ -109,7 +126,6 @@ export async function POST(req: NextRequest) {
          similarity_score = EXCLUDED.similarity_score
        WHERE note_links.user_deleted = false`,
       [
-        edge.id,
         source,
         target,
         relationType,
@@ -120,6 +136,7 @@ export async function POST(req: NextRequest) {
     );
     synced++;
   }
+
 
   console.log(`[graphify-sync] 同步完成：${synced} 条新增/更新，${skipped} 条跳过（用户已撤销）`);
 

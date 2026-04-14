@@ -5,21 +5,28 @@ import { useAuthStore } from './auth';
 interface SynthesisState {
   syntheses: Record<string, Synthesis>;
   isLoading: boolean;
-  fetchSynthesis: (categoryId: string) => Promise<void>;
-  updateAnnotation: (synthesisId: string, categoryId: string, annotation: string) => Promise<boolean>;
+  error: string | null;
+  fetchSynthesis: (categoryId: string, token: string | null) => Promise<void>;
+  updateAnnotation: (categoryId: string, annotation: string, token: string | null) => Promise<boolean>;
 }
 
 export const useSynthesisStore = create<SynthesisState>((set, get) => ({
   syntheses: {},
   isLoading: false,
+  error: null,
 
-  fetchSynthesis: async (categoryId) => {
-    const token = useAuthStore.getState().token;
-    set({ isLoading: true });
+  fetchSynthesis: async (categoryId, token) => {
+    if (!token) return;
+    set({ isLoading: true, error: null });
     try {
       const res = await fetch(`/api/synthesis/${categoryId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
       const data = await res.json();
       if (data.synthesis) {
         set((state) => ({
@@ -32,15 +39,15 @@ export const useSynthesisStore = create<SynthesisState>((set, get) => ({
       } else {
         set({ isLoading: false });
       }
-    } catch {
-      set({ isLoading: false });
+    } catch (err: any) {
+      set({ isLoading: false, error: err.message });
     }
   },
 
-  updateAnnotation: async (synthesisId, categoryId, annotation) => {
-    const token = useAuthStore.getState().token;
+  updateAnnotation: async (categoryId, annotation, token) => {
+    if (!token) return false;
     try {
-      const res = await fetch(`/api/synthesis/${synthesisId}`, {
+      const res = await fetch(`/api/synthesis/${categoryId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

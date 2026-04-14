@@ -12,7 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
 import * as https from 'https';
-import { watch } from 'fs';
+import chokidar from 'chokidar'; // 替代原生 fs.watch，解决 Linux 不支持 recursive 的问题
 
 // ─── 配置 ────────────────────────────────────────────────────────────────────
 
@@ -72,7 +72,7 @@ function log(msg: string) {
 }
 
 function postWebhook(url: string, body: object, secret: string): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
     const lib = url.startsWith('https') ? https : http;
     const u = new URL(url);
@@ -92,55 +92,50 @@ function postWebhook(url: string, body: object, secret: string): Promise<void> {
     });
     req.on('error', (e) => {
       log(`Webhook error: ${e.message}`);
-      resolve();
+      reject(e); // 让 compile() 感知失败并写入 error.log
     });
     req.write(data);
     req.end();
   });
 }
 
-// ─── 数据库连接 ───────────────────────────────────────────────────────────────
-
-async function queryDB(sql: string, params: any[] = []): Promise<any[]> {
-  // 严谨处理 pg 导入，兼容不同版本的 Node/TS 运行环境
-  const pg = await import('pg');
-  const Client = pg.default ? pg.default.Client : pg.Client;
-  
-  const client = new Client({ connectionString: DATABASE_URL });
-  await client.connect();
-  try {
-    const result = await client.query(sql, params);
-    return result.rows;
-  } finally {
-    await client.end();
-  }
-}
-
-// ─── 核心编译逻辑 ─────────────────────────────────────────────────────────────
+// 问题 10: 编译状态锁，防止并发编译导致 graph.json 被同时写入
+let isCompiling = false;
 
 async function compile() {
   log('开始编译知识图谱...');
+  if (isCompiling) {
+    log('编译进行中，跳过本次触发');
+    return;
+  }
+  isCompiling = true;
   ensureDir(OUTPUT_DIR);
   ensureDir(path.join(OUTPUT_DIR, 'wiki'));
   ensureDir(path.join(OUTPUT_DIR, 'cache'));
 
+  // 在 compile() 生命周期内共用一个 pg Client，避免每次查询都新建/销毁连接
+  const pg = await import('pg');
+  const Client = pg.default?.Client ?? pg.Client;
+  const client = new Client({ connectionString: DATABASE_URL });
+  await client.connect();
+
   try {
     // 1. 拉取所有活跃笔记
-    const notes = await queryDB(`
+    const notes = (await client.query(`
       SELECT id, title, content, tags, category_id, category_name,
              vector_id, created_at
       FROM notes WHERE status = 'active'
       ORDER BY category_name, created_at DESC
-    `);
+    `)).rows;
 
     // 2. 拉取所有连线（排除用户已手动撤销的）
-    const links = await queryDB(`
+    const links = (await client.query(`
       SELECT nl.id, nl.note_id, nl.target_note_id,
              nl.relation_type, nl.relation_confidence,
              nl.similarity_score, nl.source_category_name
       FROM note_links nl
       WHERE nl.user_deleted = false
-    `);
+    `)).rows;
 
     log(`拉取到 ${notes.length} 篇笔记，${links.length} 条连线`);
 
@@ -217,6 +212,9 @@ async function compile() {
       path.join(OUTPUT_DIR, 'error.log'),
       `[${new Date().toISOString()}] ${err.stack}\n`
     );
+  } finally {
+    await client.end(); // 确保连接始终被释放
+    isCompiling = false; // 解锁
   }
 }
 
@@ -338,12 +336,15 @@ async function main() {
   // 启动时立即编译一次
   await compile();
 
-  // 监听文件变化
-  watch(RAW_NOTES_DIR, { recursive: true }, (eventType, filename) => {
-    if (filename && filename.endsWith('.md')) {
-      scheduleCompile(`${eventType}: ${filename}`);
-    }
-  });
+  // 监听文件变化（问题 9: 用 chokidar 替代原生 watch，支持 Linux 子目录递归监听）
+  chokidar
+    .watch(RAW_NOTES_DIR, { persistent: true, ignoreInitial: true })
+    .on('add', (filePath: string) => {
+      if (filePath.endsWith('.md')) scheduleCompile(`add: ${filePath}`);
+    })
+    .on('change', (filePath: string) => {
+      if (filePath.endsWith('.md')) scheduleCompile(`change: ${filePath}`);
+    });
 
   log('文件监听已启动，等待变化...');
 }
