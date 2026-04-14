@@ -21,20 +21,33 @@ import dotenv from 'dotenv';
 // ─── 配置初始化 ─────────────────────────────────────────────────────────────
 function initConfig() {
   const env = process.env.NODE_ENV || 'development';
-  const result = dotenv.config({ 
-    path: env === 'production' ? '.env.production' : '.env.local' 
-  });
-  
-  if (result.error) {
-    console.warn(`[Config] 未能读取配置文件: ${result.error.message}`);
+
+  // 优先使用 PM2 / 系统注入的环境变量
+  // 只有在缺失时才尝试读取 dotenv 文件（兜底，避免文件不存在时崩溃）
+  const hasCriticalEnv =
+    !!process.env.DATABASE_URL && !!process.env.GRAPHIFY_WEBHOOK_SECRET;
+
+  if (!hasCriticalEnv) {
+    const envFile = env === 'production' ? '.env.production' : '.env.local';
+    const result = dotenv.config({ path: envFile });
+    if (result.error) {
+      console.warn(
+        `[Config] 未能读取配置文件 ${envFile}: ${result.error.message}` +
+        `（如已通过系统环境变量注入，可忽略此警告）`
+      );
+    }
   }
-  
+
   const required = ['DATABASE_URL', 'GRAPHIFY_WEBHOOK_SECRET'];
   const missing = required.filter(key => !process.env[key]);
-  
+
   if (missing.length > 0) {
     console.error(`[Fatal] 缺少关键配置项: ${missing.join(', ')}`);
-    // 在生产环境下，缺少关键配置应立即报错停止，防止产生脏数据
+    console.error(
+      '[Fatal] 请通过以下任一方式提供配置：\n' +
+      '  1. 系统环境变量（export DATABASE_URL=...）\n' +
+      '  2. 项目根目录下的 .env.production 文件'
+    );
     if (env === 'production') process.exit(1);
   }
 }

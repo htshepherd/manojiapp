@@ -129,7 +129,7 @@ export default function WanderPage() {
 
   if (isInitialLoading) {
     return (
-      <div className="fixed inset-0 bg-white flex flex-col items-center justify-center space-y-4 z-50">
+      <div className="fixed inset-0 md:left-[260px] bg-white flex flex-col items-center justify-center space-y-4 z-50">
         <Loader2 size={40} className="animate-spin text-teal-600" />
         <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">正在开启随机漫步...</p>
       </div>
@@ -138,7 +138,7 @@ export default function WanderPage() {
 
   if (cards.length === 0 || currentIndex >= cards.length) {
     return (
-      <div className="fixed inset-0 bg-white flex flex-col items-center justify-center px-8 text-center space-y-8 animate-in fade-in duration-500 z-50">
+      <div className="fixed inset-0 md:left-[260px] bg-white flex flex-col items-center justify-center px-8 text-center space-y-8 animate-in fade-in duration-500 z-50">
         <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center shadow-inner">
           <Inbox size={40} className="text-gray-200" />
         </div>
