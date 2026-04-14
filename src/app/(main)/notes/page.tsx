@@ -29,13 +29,13 @@ const timeAgo = (dateString: string) => {
 
 export default function NotesPage() {
   const { activeCategory, setActiveCategory } = useCategoryContext();
-  const { notes, fetchNotes, clearNotes, isLoading } = useNotesStore();
+  const { notes, fetchNotes, clearNotes, isLoading, hasMore, page } = useNotesStore();
   const { categories, fetchCategories } = useCategoriesStore();
 
   useEffect(() => {
     fetchCategories();
     clearNotes(); // 切换时先清空，避免旧数据闪烁
-    fetchNotes(activeCategory === "all" ? undefined : activeCategory);
+    fetchNotes(activeCategory === "all" ? undefined : activeCategory, 1, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory]);
 
@@ -85,16 +85,17 @@ export default function NotesPage() {
         ))}
       </div>
 
-      {isLoading ? (
+      {isLoading && displayedNotes.length === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-8 px-1 md:px-2">
           {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className="h-32 md:h-72 bg-gray-100 rounded-2xl md:rounded-[40px] animate-pulse" />
           ))}
         </div>
       ) : displayedNotes.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-8 px-1 md:px-2 pb-10">
-          {displayedNotes.map((note) => (
-            <Link
+        <div className="flex flex-col pb-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-8 px-1 md:px-2">
+            {displayedNotes.map((note) => (
+              <Link
               key={note.id}
               href={`/notes/${note.id}`}
               className="group relative bg-white rounded-2xl md:rounded-[40px] p-4 md:p-8 border border-gray-100 shadow-sm hover:shadow-2xl hover:border-teal-100 transition-all duration-500 cursor-pointer overflow-hidden flex flex-col justify-between min-h-0 md:min-h-[300px]"
@@ -138,6 +139,19 @@ export default function NotesPage() {
 
             </Link>
           ))}
+          </div>
+          
+          {hasMore && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={() => fetchNotes(activeCategory === "all" ? undefined : activeCategory, page + 1, true)}
+                disabled={isLoading}
+                className="px-6 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? "加载中..." : "加载更多"}
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center py-20 md:py-24 text-center bg-gray-50/50 rounded-2xl md:rounded-[40px] border border-dashed border-gray-200 mx-1 md:mx-2">

@@ -9,10 +9,12 @@ interface GenerateNoteResponse { // typed
 interface NotesState {
   notes: Note[];
   isLoading: boolean;
+  hasMore: boolean;
+  page: number;
   pendingNoteId: string | null;
   pendingUntil: string | null;
   
-  fetchNotes: (_categoryId?: string) => Promise<void>;
+  fetchNotes: (_categoryId?: string, _page?: number, _append?: boolean) => Promise<void>;
   fetchRecentNotes: (_limit?: number) => Promise<Note[]>;
   generateNote: (_categoryId: string, _text: string, _overwriteId?: string) => Promise<GenerateNoteResponse>; // typed
   undoNote: (_id: string) => Promise<boolean>;
@@ -25,21 +27,34 @@ interface NotesState {
 export const useNotesStore = create<NotesState>((set, get) => ({
   notes: [],
   isLoading: false,
+  hasMore: false,
+  page: 1,
   pendingNoteId: null,
   pendingUntil: null,
 
-  clearNotes: () => set({ notes: [] }),
+  clearNotes: () => set({ notes: [], hasMore: false, page: 1 }),
 
-  fetchNotes: async (categoryId) => {
+  fetchNotes: async (categoryId, pageNum = 1, append = false) => {
     const token = useAuthStore.getState().token;
     set({ isLoading: true });
     try {
-      const url = categoryId ? `/api/notes?category_id=${categoryId}` : '/api/notes';
+      const url = categoryId ? `/api/notes?category_id=${categoryId}&page=${pageNum}&limit=20` : `/api/notes?page=${pageNum}&limit=20`;
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
-      set({ notes: data.notes || [], isLoading: false });
+      
+      let hasMore = false;
+      if (data.pagination) {
+        hasMore = data.pagination.page < data.pagination.totalPages;
+      }
+      
+      set((state) => ({ 
+        notes: append ? [...state.notes, ...(data.notes || [])] : (data.notes || []), 
+        isLoading: false,
+        hasMore,
+        page: pageNum
+      }));
     } catch {
       set({ isLoading: false });
     }
