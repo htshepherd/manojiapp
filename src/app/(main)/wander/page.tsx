@@ -32,15 +32,31 @@ export default function WanderPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
+  const [hasMore, setHasMore] = useState(true);
   
+  // -- 核心防患未然：基于最新引用的无依赖获取 --
+  const latestRef = useRef({ cards, currentIndex, seenIds, hasMore });
+  useEffect(() => {
+    latestRef.current = { cards, currentIndex, seenIds, hasMore };
+  }, [cards, currentIndex, seenIds, hasMore]);
+
+  // -- 并发与重入锁 --
+  const isFetchingRef = useRef(false);
+
   // 动画状态
   const [offsetY, setOffsetY] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const startYRef = useRef(0);
 
   const loadMore = useCallback(async () => {
-    if (isLoading) return;
+    const { cards: curCards, currentIndex: curIdx, seenIds: curSeen, hasMore: curHasMore } = latestRef.current;
+    
+    // 如果已经在加载，或者没数据可加载了，直接返回
+    if (isFetchingRef.current || !curHasMore) return;
+    
+    isFetchingRef.current = true;
     setIsLoading(true);
+    
     try {
       const res = await fetch("/api/wander", {
         method: "POST",
@@ -49,11 +65,12 @@ export default function WanderPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          excludeIds: Array.from(seenIds),
-          lastNoteVectorId: cards[currentIndex]?.vectorId,
+          excludeIds: Array.from(curSeen),
+          lastNoteVectorId: curCards[curIdx]?.vectorId,
         }),
       });
       const data = await res.json();
+      
       if (data.notes && data.notes.length > 0) {
         setCards((prev) => [...prev, ...data.notes]);
         setSeenIds((prev) => {
@@ -61,26 +78,34 @@ export default function WanderPage() {
           data.notes.forEach((n: WanderNote) => next.add(n.id));
           return next;
         });
+      } else {
+        // 后端没返回数据，彻底停止后续无谓的预加载触发
+        setHasMore(false);
       }
     } catch (error: unknown) {
       console.error("[Wander] Failed to load cards:", error);
     } finally {
+      isFetchingRef.current = false;
       setIsLoading(false);
       setIsInitialLoading(false);
     }
-  }, [token, seenIds, cards, currentIndex, isLoading]);
+  }, [token]);
 
-  // 初始化加载
+  // 初始化加载（严格只执行一次）
+  const hasInitRef = useRef(false);
   useEffect(() => {
-    if (token) loadMore();
+    if (token && !hasInitRef.current) {
+      hasInitRef.current = true;
+      loadMore();
+    }
   }, [token, loadMore]);
 
   // 预加载策略：当滑到倒数第2张时加载下一批
   useEffect(() => {
-    if (cards.length > 0 && currentIndex >= cards.length - 2 && !isLoading) {
+    if (hasMore && cards.length > 0 && currentIndex >= cards.length - 2 && !isLoading) {
       loadMore();
     }
-  }, [currentIndex, cards.length, isLoading, loadMore]);
+  }, [currentIndex, cards.length, isLoading, hasMore, loadMore]);
 
   const triggerSwipe = () => {
     if (isAnimating || currentIndex >= cards.length) return;

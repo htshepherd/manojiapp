@@ -19,6 +19,7 @@ import chokidar from 'chokidar'; // 替代原生 fs.watch，解决 Linux 不支�
 
 interface NoteRecord {
   id: string;
+  user_id: string;
   title: string;
   content: string;
   tags: string[] | null;
@@ -144,12 +145,12 @@ async function compile() {
   await client.connect();
 
   try {
-    // 1. 拉取所有活跃笔记
+    // 1. 拉取所有活跃笔记（包含 user_id）
     const notes = (await client.query(`
-      SELECT id, title, content, tags, category_id, category_name,
+      SELECT id, user_id, title, content, tags, category_id, category_name,
              vector_id, created_at
       FROM notes WHERE status = 'active'
-      ORDER BY category_name, created_at DESC
+      ORDER BY user_id, category_name, created_at DESC
     `)).rows;
 
     // 2. 拉取所有连线（排除用户已手动撤销的）
@@ -163,9 +164,10 @@ async function compile() {
 
     log(`拉取到 ${notes.length} 篇笔记，${links.length} 条连线`);
 
-    // 3. 构建 graph.json
+    // 3. 构建 graph.json，包含 userId 实现租户隔离
     const nodes = (notes as NoteRecord[]).map((n) => ({
       id: n.id,
+      userId: n.user_id,
       title: n.title,
       categoryId: n.category_id,
       categoryName: n.category_name,
@@ -199,21 +201,22 @@ async function compile() {
     );
     log('graph.json 已生成');
 
-    // 4. 按分类生成 wiki 综述 Markdown
-    const categories = new Map<string, { name: string; notes: NoteRecord[] }>();
+    // 4. 按租户和分类生成 wiki 综述 Markdown
+    const categories = new Map<string, { name: string; notes: NoteRecord[], userId: string }>();
     for (const note of (notes as NoteRecord[])) {
-      if (!categories.has(note.category_id)) {
-        categories.set(note.category_id, { name: note.category_name, notes: [] });
+      const key = `${note.user_id}_${note.category_id}`;
+      if (!categories.has(key)) {
+        categories.set(key, { name: note.category_name, notes: [], userId: note.user_id });
       }
-      categories.get(note.category_id)!.notes.push(note);
+      categories.get(key)!.notes.push(note);
     }
 
-    for (const [, cat] of categories.entries()) {
+    for (const [key, cat] of categories.entries()) {
       const wikiContent = buildWikiContent(cat.name, cat.notes, links);
-      const safeFileName = cat.name.replace(/[\/\\:*?"<>|]/g, '_');
-      const wikiPath = path.join(OUTPUT_DIR, 'wiki', `${safeFileName}.md`);
+      // 以 user_id + category_id 命名，彻底解决同名冲突和改名后对应不上的 Bug
+      const wikiPath = path.join(OUTPUT_DIR, 'wiki', `${key}.md`);
       fs.writeFileSync(wikiPath, wikiContent, 'utf-8');
-      log(`Wiki 综述已生成: ${safeFileName}.md (${cat.notes.length} 篇)`);
+      log(`Wiki 综述已生成: ${key}.md (${cat.notes.length} 篇)`);
     }
 
     // 5. 生成 GRAPH_REPORT.md

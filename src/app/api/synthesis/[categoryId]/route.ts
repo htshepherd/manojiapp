@@ -36,9 +36,11 @@ export async function GET(
       console.error('[synthesis-api] GRAPHIFY_OUT_DIR 未配置');
       return NextResponse.json({ error: '服务器配置错误' }, { status: 500 });
     }
+
+    // 修复：读取以 userId_categoryId 命名的专属 Wiki，彻底解决租户隔离和分类改名问题
     const wikiDir = path.resolve(outDir, 'wiki');
-    const safeFileName = path.basename(name.replace(/[\/\\:*?"<>|]/g, '_'));
-    const wikiPath = path.join(wikiDir, `${safeFileName}.md`);
+    const wikiFileName = `${userId}_${categoryId}.md`;
+    const wikiPath = path.join(wikiDir, wikiFileName);
 
     // 问题 6: 用 path.relative 替代 startsWith
     // startsWith 在 wikiDir 末尾无斜杠时，攻击者可构造 wikiDir + '-evil/...' 绕过
