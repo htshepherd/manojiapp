@@ -1,6 +1,7 @@
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken'; // typed
 import { db } from './db';
 import { NextRequest } from 'next/server';
+import { createHash } from 'crypto';
 
 // ─── 启动时校验关键环境变量 ────────────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -18,25 +19,26 @@ export function signToken(userId: string): string {
   });
 }
 
-// 问题 18: 简单内存缓存，缓解高并发下对 users 表的 SELECT 压力
-// key 为 token 的后 16 位，TTL 为 15 分钟
+// 问题 18 & 问题 B: 内存缓存，缓解高并发下对 users 表的 SELECT 压力
+// 问题 B：改用完整 token 的哈希作为 key，防止碰撞；增加容量上限防止内存泄漏
 const authCache = new Map<string, { userId: string, expiry: number }>();
+const MAX_CACHE_SIZE = 5000;
 
 export async function requireAuth(req: NextRequest): Promise<string> {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   if (!token) throw { status: 401, message: '未登录' };
 
   // 1. 尝试从缓存获取
-  const cacheKey = token.slice(-16);
+  const cacheKey = createHash('sha256').update(token).digest('hex');
   const cached = authCache.get(cacheKey);
   if (cached && cached.expiry > Date.now()) {
     return cached.userId;
   }
 
-  let payload: any;
+  let payload: JwtPayload; // typed
   try {
-    payload = jwt.verify(token, JWT_SECRET);
-  } catch (err: any) {
+    payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+  } catch {
     // JWT 过期或无效
     throw { status: 401, message: 'Token 已过期或无效' };
   }
@@ -76,6 +78,9 @@ export async function requireAuth(req: NextRequest): Promise<string> {
   }
 
   // 4. 更新缓存
+  if (authCache.size >= MAX_CACHE_SIZE) {
+    authCache.clear(); // 简单 LRU 策略：超出直接清空，平衡内存安全性
+  }
   authCache.set(cacheKey, { 
     userId: payload.user_id, 
     expiry: Date.now() + 15 * 60 * 1000 

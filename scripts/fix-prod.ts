@@ -47,8 +47,9 @@ async function run() {
         console.log('[2/2] 请务必重启服务: pm2 restart graphify-watcher');
         process.exit(0);
 
-    } catch (err: any) {
-        console.error('❌ 执行失败:', err.message);
+    } catch (err: unknown) {
+        const error = err as Error;
+        console.error('❌ 执行失败:', error.message);
         process.exit(1);
     }
 }

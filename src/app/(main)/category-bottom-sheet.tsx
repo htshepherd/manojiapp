@@ -9,7 +9,7 @@ interface CategoryBottomSheetProps {
   onClose: () => void;
   categories: Category[];
   activeCategoryId: string;
-  onSelect: (id: string) => void;
+  onSelect: (_id: string) => void;
 }
 
 export default function CategoryBottomSheet({

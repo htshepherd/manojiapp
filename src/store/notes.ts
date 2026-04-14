@@ -2,19 +2,23 @@ import { create } from 'zustand';
 import { Note } from '@/types';
 import { useAuthStore } from './auth';
 
+interface GenerateNoteResponse { // typed
+  note: Note;
+}
+
 interface NotesState {
   notes: Note[];
   isLoading: boolean;
   pendingNoteId: string | null;
   pendingUntil: string | null;
   
-  fetchNotes: (categoryId?: string) => Promise<void>;
-  fetchRecentNotes: (limit?: number) => Promise<Note[]>;
-  generateNote: (categoryId: string, text: string, overwriteId?: string) => Promise<any>;
-  undoNote: (id: string) => Promise<boolean>;
-  deleteNote: (id: string) => Promise<boolean>;
-  removeLink: (noteId: string, targetNoteId: string) => Promise<boolean>;
-  setPending: (id: string | null, until: string | null) => void;
+  fetchNotes: (_categoryId?: string) => Promise<void>;
+  fetchRecentNotes: (_limit?: number) => Promise<Note[]>;
+  generateNote: (_categoryId: string, _text: string, _overwriteId?: string) => Promise<GenerateNoteResponse>; // typed
+  undoNote: (_id: string) => Promise<boolean>;
+  deleteNote: (_id: string) => Promise<boolean>;
+  removeLink: (_noteId: string, _targetNoteId: string) => Promise<boolean>;
+  setPending: (_id: string | null, _until: string | null) => void;
   clearNotes: () => void;
 }
 
@@ -70,7 +74,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         })
       });
       if (!res.ok) throw new Error('生成失败');
-      const data = await res.json();
+      const data: GenerateNoteResponse = await res.json(); // typed
       
       // 更新本地状态
       if (overwriteId) {
@@ -82,7 +86,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       }
       
       return data;
-    } catch (err) {
+    } catch (err: unknown) { // typed
       throw err;
     }
   },
@@ -91,7 +95,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const token = useAuthStore.getState().token;
     try {
       const res = await fetch(`/api/notes/${id}/undo`, {
-        method: 'DELETE',
+        method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) return false;

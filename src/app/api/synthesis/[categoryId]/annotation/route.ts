@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { CategoryRow, SynthesisRow } from '@/types';
 
 export async function PUT(
   req: NextRequest,
@@ -10,7 +11,7 @@ export async function PUT(
     const userId = await requireAuth(req);
     const { categoryId } = await params;
 
-    const catCheck = await db.query(
+    const catCheck = await db.query<CategoryRow>(
       `SELECT id FROM categories WHERE id = $1 AND user_id = $2`,
       [categoryId, userId]
     );
@@ -20,7 +21,7 @@ export async function PUT(
 
     const { user_annotation } = await req.json();
 
-    const result = await db.query(
+    const result = await db.query<SynthesisRow>(
       `INSERT INTO synthesis (category_id, user_annotation, updated_at)
        VALUES ($1, $2, NOW())
        ON CONFLICT (category_id) DO UPDATE
@@ -31,9 +32,10 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      updated_at: result.rows[0].updated_at
+      updated_at: result.rows[0]!.updated_at
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+  } catch (err: unknown) {
+    const error = err as { message?: string; status?: number };
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });
   }
 }

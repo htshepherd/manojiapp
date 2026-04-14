@@ -22,13 +22,16 @@ body {
 }
 
 /* 问题 57: 移除全局 * 过渡以优化性能，特别是在图谱和长列表页面 */
-button, a, .interactive {
+button,
+a,
+.interactive {
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -62,13 +65,14 @@ body.drawer-open {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
 .prose table {
   display: block;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
 .prose img {
   max-width: 100%;
   height: auto;
 }
-

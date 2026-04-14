@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { renameRawDir, deleteRawDir } from '@/lib/filesystem';
 import { deleteVectors } from '@/lib/qdrant';
+import { CategoryRow, NoteRow } from '@/types';
 
 export async function PUT(
   req: NextRequest,
@@ -12,13 +13,13 @@ export async function PUT(
     const userId = await requireAuth(req);
     const { id } = await params;
 
-    const existing = await db.query(
+    const existing = await db.query<CategoryRow>(
       `SELECT * FROM categories WHERE id = $1 AND user_id = $2`, [id, userId]
     );
     if (existing.rows.length === 0) {
       return NextResponse.json({ error: '分类不存在或无权操作' }, { status: 403 });
     }
-    const category = existing.rows[0];
+    const category = existing.rows[0]!;
 
     const body = await req.json();
     const name = body.name || category.name;
@@ -69,7 +70,7 @@ export async function PUT(
       throw err;
     }
 
-    const finalResult = await db.query(
+    const finalResult = await db.query<CategoryRow>(
       `SELECT id, name, granularity,
         prompt_template AS "promptTemplate",
         link_threshold AS "linkThreshold",
@@ -78,9 +79,10 @@ export async function PUT(
        FROM categories WHERE id = $1`, [id]
     );
     return NextResponse.json({ category: finalResult.rows[0] });
-  } catch (err: any) {
-    console.error('Category Update Error:', err);
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+  } catch (err: unknown) {
+    const error = err as { message?: string; status?: number };
+    console.error('Category Update Error:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });
   }
 }
 
@@ -92,18 +94,18 @@ export async function DELETE(
     const userId = await requireAuth(req);
     const { id } = await params;
 
-    const existing = await db.query(
+    const existing = await db.query<CategoryRow>(
       `SELECT * FROM categories WHERE id = $1 AND user_id = $2`, [id, userId]
     );
     if (existing.rows.length === 0) {
       return NextResponse.json({ error: '分类不存在或无权操作' }, { status: 403 });
     }
-    const category = existing.rows[0];
+    const category = existing.rows[0]!;
 
-    const notes = await db.query(
+    const notes = await db.query<NoteRow>(
       `SELECT id, vector_id FROM notes WHERE category_id = $1`, [id]
     );
-    const vectorIds = notes.rows.map((n: any) => n.vector_id).filter(Boolean);
+    const vectorIds = notes.rows.map((n: NoteRow) => n.vector_id).filter((v): v is string => !!v);
 
     if (vectorIds.length > 0) await deleteVectors(vectorIds);
     // 问题 36: 必须 await deleteRawDir，否则物理目录不会被删除
@@ -111,7 +113,8 @@ export async function DELETE(
 
     await db.query(`DELETE FROM categories WHERE id = $1`, [id]);
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+  } catch (err: unknown) {
+    const error = err as { message?: string; status?: number };
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });
   }
 }

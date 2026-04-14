@@ -47,10 +47,11 @@ export async function POST(req: NextRequest) {
     let generated;
     try {
         generated = await generateNote(category.prompt_template, input_text);
-    } catch (aiErr: any) {
-        console.error('>>> [AI ERROR]', aiErr);
+    } catch (aiErr: unknown) { // typed
+        const err = aiErr as Error; // typed
+        console.error('>>> [AI ERROR]', err);
         return NextResponse.json({ 
-            error: `AI 提炼失败: ${aiErr.message}`,
+            error: `AI 提炼失败: ${err.message}`,
             debug: '请检查 Claude API Key 或网络代理'
         }, { status: 500 });
     }
@@ -129,7 +130,7 @@ export async function POST(req: NextRequest) {
         note, 
         pending_until: new Date(Date.now() + 5000).toISOString() 
     });
-  } catch (globalErr: any) {
+  } catch (globalErr: unknown) { // typed
     return handleError(globalErr);
   }
 }

@@ -17,7 +17,7 @@ export async function createRawDir(categoryName: string): Promise<string> {
 export async function deleteRawDir(rawDir: string): Promise<void> {
   try {
     await fs.promises.rm(rawDir, { recursive: true, force: true });
-  } catch (err) {
+  } catch {
     // 忽略目录不存在等非核心错误
   }
 }
@@ -29,7 +29,7 @@ export async function renameRawDir(oldDir: string, newCategoryName: string): Pro
   );
   try {
     await fs.promises.rename(oldDir, newDir);
-  } catch (err) {
+  } catch {
     // 忽略旧目录不存在的情况
   }
   return newDir;
@@ -59,7 +59,7 @@ created_at: ${createdAt}
 export async function deleteRawNote(filePath: string): Promise<void> {
   try {
     await fs.promises.unlink(filePath);
-  } catch (err) {
+  } catch {
     // 忽略文件不存在等错误
   }
 }

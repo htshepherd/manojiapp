@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef, use } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useCategoriesStore } from '@/store/categories';
 import { useAuthStore } from '@/store/auth';
 import { useNotesStore } from '@/store/notes';
 import { Loader2, RotateCcw, Sparkles, CheckCircle2, ArrowRight, ChevronLeft, Save } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Note } from '@/types';
 
 export default function NewNotePage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const overwriteId = searchParams.get('overwrite');
   
@@ -23,7 +23,7 @@ export default function NewNotePage() {
   const [status, setStatus] = useState<'idle' | 'processing' | 'completed'>('idle');
   const [loadingStep, setLoadingStep] = useState(0);
   const [undoTimer, setUndoTimer] = useState(0);
-  const [generatedNote, setGeneratedNote] = useState<any | null>(null);
+  const [generatedNote, setGeneratedNote] = useState<Note | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const charCount = inputText.length;
@@ -44,12 +44,12 @@ export default function NewNotePage() {
     // 如果是更正模式，加载原始笔记数据
     if (overwriteId) {
         const fetchOriginal = async () => {
-            const token = useAuthStore.getState().token || (localStorage.getItem('auth-storage') 
+            const tokenValue = useAuthStore.getState().token || (localStorage.getItem('auth-storage') 
                 ? JSON.parse(localStorage.getItem('auth-storage')!).state.token 
                 : null);
             try {
                 const res = await fetch(`/api/notes/${overwriteId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${tokenValue}` }
                 });
                 const data = await res.json();
                 if (data.note) {
@@ -83,7 +83,7 @@ export default function NewNotePage() {
         setGeneratedNote(data.note);
         setStatus('completed');
         setUndoTimer(5);
-    } catch (error) {
+    } catch (_error) {
         clearInterval(stepInterval);
         alert('生成失败，请检查网络或配置');
         setCurrentStep(1);

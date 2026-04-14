@@ -40,12 +40,13 @@ TAGS: {标签1,标签2}
   // 【核心修复】：智能提取所有文本块，过滤掉 Thinking 思考块
   let rawText = response.content
     .filter(block => block.type === 'text')
-    .map(block => (block as any).text)
+    .map(block => (block as Anthropic.TextBlock).text) // typed
     .join('\n');
 
   if (!rawText) {
       // 容错：如果还是没拿到，尝试强制读取第一个块（兜底）
-      rawText = (response.content[0] as any).text || '';
+      const firstBlock = response.content[0]; // typed
+      rawText = firstBlock && 'text' in firstBlock ? firstBlock.text : ''; // typed
   }
 
   if (!rawText) {

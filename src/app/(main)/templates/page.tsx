@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2, X, FileText, Save, Loader2, Bot } from "lucide-react";
-import { useTemplatesStore, PromptTemplate } from "@/store/templates";
+import { useTemplatesStore } from "@/store/templates";
+import { PromptTemplate } from "@/types";
 
 export default function TemplatesPage() {
   const { templates, fetchTemplates, addTemplate, updateTemplate, deleteTemplate, isLoading } = useTemplatesStore();

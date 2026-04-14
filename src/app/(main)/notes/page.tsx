@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { Plus, Inbox } from "lucide-react";
 import { useNotesStore } from "@/store/notes";

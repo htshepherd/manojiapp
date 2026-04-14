@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { GraphEdge } from '@/types';
 
 /**
  * POST /api/internal/graphify-sync
@@ -31,23 +32,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '无效的 Webhook 密钥' }, { status: 401 });
   }
 
-  const graphPath = path.resolve(process.env.GRAPHIFY_OUT_DIR!, 'graph.json');
+  const outDir = process.env.GRAPHIFY_OUT_DIR;
+  if (!outDir) {
+      return NextResponse.json({ error: 'GRAPHIFY_OUT_DIR not configured' }, { status: 500 });
+  }
+  const graphPath = path.resolve(outDir, 'graph.json');
   try {
     await fs.promises.access(graphPath);
   } catch {
     return NextResponse.json({ error: 'graph.json 不存在' }, { status: 404 });
   }
 
-  let graph: any;
+  let graph: { edges: GraphEdge[]; generated_at: string };
   try {
     const data = await fs.promises.readFile(graphPath, 'utf-8');
     graph = JSON.parse(data);
-  } catch (e: any) {
-    console.error('[graphify-sync] graph.json 解析失败:', e.message);
+  } catch (e: unknown) {
+    const error = e as Error;
+    console.error('[graphify-sync] graph.json 解析失败:', error.message);
     return NextResponse.json({ error: 'graph.json 解析失败' }, { status: 500 });
   }
 
-  const edges: any[] = graph.edges || [];
+  const edges: GraphEdge[] = graph.edges || [];
   if (edges.length === 0) {
     return NextResponse.json({ success: true, synced: 0, total: 0 });
   }
@@ -62,7 +68,7 @@ export async function POST(req: NextRequest) {
     edges.flatMap(e => [e.source, e.target]).filter(id => UUID_RE.test(id))
   ));
 
-  const notesResult = await db.query(
+  const notesResult = await db.query<{ id: string; user_id: string }>(
     `SELECT id, user_id FROM notes WHERE id = ANY($1::uuid[]) AND status = 'active'`,
     [allNoteIds]
   );
@@ -75,7 +81,7 @@ export async function POST(req: NextRequest) {
   if (validPairs.length > 0) {
     const sources = validPairs.map(e => e.source);
     const targets = validPairs.map(e => e.target);
-    const deletedResult = await db.query(
+    const deletedResult = await db.query<{ note_id: string; target_note_id: string }>(
       `SELECT nl.note_id, nl.target_note_id
        FROM note_links nl
        JOIN unnest($1::uuid[], $2::uuid[]) AS p(src, tgt)
@@ -83,7 +89,7 @@ export async function POST(req: NextRequest) {
        WHERE nl.user_deleted = true`,
       [sources, targets]
     );
-    deletedResult.rows.forEach((r: any) => {
+    deletedResult.rows.forEach(r => {
       deletedPairSet.add(`${r.note_id}::${r.target_note_id}`);
     });
   }
@@ -152,7 +158,7 @@ export async function POST(req: NextRequest) {
 /**
  * relation_type CHECK: ('supplement', 'extend', 'conflict', 'example')
  */
-function mapRelationType(relationType: string, _confidence: string): string {
+function mapRelationType(relationType: string | undefined, _confidence: string | undefined): string {
   if (relationType === 'conflict') return 'conflict';
   if (relationType === 'example') return 'example';
   if (relationType === 'extend') return 'extend';
@@ -162,7 +168,7 @@ function mapRelationType(relationType: string, _confidence: string): string {
 /**
  * relation_confidence CHECK: ('direct', 'inferred', 'uncertain')
  */
-function mapConfidence(confidence: string): string {
+function mapConfidence(confidence: string | undefined): string {
   if (confidence === 'direct') return 'direct';
   if (confidence === 'uncertain') return 'uncertain';
   return 'inferred'; // default

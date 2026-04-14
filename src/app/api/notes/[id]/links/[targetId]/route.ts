@@ -34,7 +34,8 @@ export async function DELETE(
     );
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+  } catch (err: unknown) { // typed
+    const error = err as { status?: number; message?: string }; // typed
+    return NextResponse.json({ error: error.message || 'Unknown error' }, { status: error.status || 500 }); // typed
   }
 }

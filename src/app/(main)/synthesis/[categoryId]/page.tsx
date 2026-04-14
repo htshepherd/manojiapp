@@ -4,6 +4,7 @@ import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSynthesisStore } from '@/store/synthesis';
 import { useCategoriesStore } from '@/store/categories';
+import { useAuthStore } from '@/store/auth';
 import { Bot, PenLine, ChevronLeft, Loader2, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';

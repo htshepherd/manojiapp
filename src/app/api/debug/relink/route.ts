@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { qdrant, searchSimilar } from '@/lib/qdrant';
 import { v4 as uuidv4 } from 'uuid';
+import { NoteRow, CategoryRow } from '@/types';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 问题 54: 必须过滤 status = 'active'，防止为已软删除的笔记重建连线
-    const notesResult = await db.query(
+    const notesResult = await db.query<NoteRow>(
       `SELECT id, user_id, category_id, category_name, vector_id FROM notes 
        WHERE vector_id IS NOT NULL AND status = 'active'`
     );
@@ -25,6 +26,8 @@ export async function POST(req: NextRequest) {
     let totalLinksCreated = 0;
 
     for (const note of notes) {
+      if (!note.vector_id) continue;
+
       // Get the vector for this note from Qdrant
       const pointRes = await qdrant.retrieve(process.env.QDRANT_COLLECTION!, {
         ids: [note.vector_id],
@@ -32,16 +35,18 @@ export async function POST(req: NextRequest) {
         with_payload: true,
       });
 
-      if (pointRes.length === 0 || !pointRes[0].vector) continue;
+      const point = pointRes[0];
+      if (!point || !point.vector) continue;
 
-      const rawVec = pointRes[0].vector;
+      const rawVec = point.vector;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const vector: number[] = Array.isArray(rawVec) ? rawVec : (rawVec as any).default;
 
       // Search for similar notes across the user's library
       const similarNotes = await searchSimilar(vector, note.user_id, undefined, 10);
 
       // 问题 59: 增加 user_id 约束，作为深度防御防止读到他人分类配置
-      const catResult = await db.query(
+      const catResult = await db.query<CategoryRow>(
         `SELECT link_threshold FROM categories WHERE id = $1 AND user_id = $2`,
         [note.category_id, note.user_id]
       );
@@ -66,16 +71,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const allLinks = await db.query('SELECT COUNT(*) FROM note_links');
+    const allLinks = await db.query<{ count: string }>('SELECT COUNT(*) FROM note_links');
 
     return NextResponse.json({
       success: true,
       notesProcessed: notes.length,
       linksCreated: totalLinksCreated,
-      totalLinksInDB: parseInt(allLinks.rows[0].count),
+      totalLinksInDB: parseInt(allLinks.rows[0]!.count),
     });
-  } catch (e: any) {
-    console.error('>>> [RELINK ERROR]', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (e: unknown) {
+    const error = e as Error;
+    console.error('>>> [RELINK ERROR]', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -3,6 +3,21 @@ import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { handleError } from '@/lib/api-response';
 
+interface NoteRow { // typed
+  id: string;
+  title: string;
+  tags: string[] | null;
+  preview: string;
+  categoryId: string;
+  categoryName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CountRow { // typed
+  count: string;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const userId = await requireAuth(req);
@@ -19,7 +34,7 @@ export async function GET(req: NextRequest) {
                         created_at AS "createdAt", 
                         updated_at AS "updatedAt"
                  FROM notes WHERE user_id = $1 AND status = 'active'`;
-    const values: any[] = [userId];
+    const values: (string | number)[] = [userId]; // typed
 
     if (categoryId) {
       query += ` AND category_id = $${values.length + 1}`;
@@ -28,23 +43,23 @@ export async function GET(req: NextRequest) {
     query += ` ORDER BY created_at DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
     values.push(limit, offset);
 
-    const result = await db.query(query, values);
+    const result = await db.query<NoteRow>(query, values); // typed
 
     // 同时查总数（用于前端分页）
     let countQuery = `SELECT COUNT(*) FROM notes WHERE user_id = $1 AND status = 'active'`;
-    const countValues: any[] = [userId];
+    const countValues: (string | number)[] = [userId]; // typed
     if (categoryId) {
       countQuery += ` AND category_id = $2`;
       countValues.push(categoryId);
     }
-    const countResult = await db.query(countQuery, countValues);
-    const total = parseInt(countResult.rows[0].count);
+    const countResult = await db.query<CountRow>(countQuery, countValues); // typed
+    const total = parseInt(countResult.rows[0]?.count || '0'); // typed
 
     return NextResponse.json({
       notes: result.rows,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
     });
-  } catch (err: any) {
+  } catch (err: unknown) { // typed
     return handleError(err);
   }
 }

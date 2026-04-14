@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import * as fs from 'fs';
 import * as path from 'path';
 import { handleError } from '@/lib/api-response';
+import { SynthesisRow, Synthesis } from '@/types';
 
 export async function GET(
   req: NextRequest,
@@ -13,21 +14,21 @@ export async function GET(
     const userId = await requireAuth(req);
     const { categoryId } = await params;
 
-    const catResult = await db.query(
+    const catResult = await db.query<{ name: string }>(
       `SELECT name FROM categories WHERE id = $1 AND user_id = $2`,
       [categoryId, userId]
     );
     if (catResult.rows.length === 0) {
       return NextResponse.json({ error: '无权操作' }, { status: 403 });
     }
-    const { name } = catResult.rows[0];
+    const { name } = catResult.rows[0]!;
 
     // 实时 COUNT （替代可能过时的 note_count 冒余字段）
-    const countResult = await db.query(
+    const countResult = await db.query<{ count: string }>(
       `SELECT COUNT(*) AS count FROM notes WHERE category_id = $1 AND user_id = $2 AND status = 'active'`,
       [categoryId, userId]
     );
-    const basedOnCount = parseInt(countResult.rows[0].count) || 0;
+    const basedOnCount = parseInt(countResult.rows[0]!.count) || 0;
 
     // 问题 7: GRAPHIFY_OUT_DIR 未配置时用相对路径可能指向错误位置，消除静默失败。
     const outDir = process.env.GRAPHIFY_OUT_DIR;
@@ -49,11 +50,12 @@ export async function GET(
 
     console.log(`[synthesis-api] 尝试读取 Wiki: ${wikiPath}`);
 
-    let ai_content = null;
+    let ai_content: string | null = null;
     try {
       ai_content = await fs.promises.readFile(wikiPath, 'utf-8');
-    } catch (err: any) {
-      console.warn(`[synthesis-api] Wiki 文件不可读: ${wikiPath}`, err.message);
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.warn(`[synthesis-api] Wiki 文件不可读: ${wikiPath}`, error.message);
     }
     
     if (!ai_content) {
@@ -61,13 +63,13 @@ export async function GET(
     }
 
     // 读取用户批注（SELECT 字段与响应结构一一对应）
-    const synthResult = await db.query(
+    const synthResult = await db.query<SynthesisRow>(
       `SELECT id, user_annotation, generated_at, updated_at FROM synthesis WHERE category_id = $1`,
       [categoryId]
     );
     const synth = synthResult.rows[0];
 
-    const synthesis = {
+    const synthesis: Synthesis = {
       id: synth?.id || `temp-${categoryId}`,
       categoryId,
       categoryName: name,
@@ -82,7 +84,7 @@ export async function GET(
       success: true,
       synthesis
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return handleError(err);
   }
 }

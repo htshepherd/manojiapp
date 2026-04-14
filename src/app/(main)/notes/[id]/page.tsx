@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { useNotesStore } from '@/store/notes';
 import { RELATION_CONFIG } from '@/lib/relation-config';
-import { ArrowLeft, Edit3, X, Info, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit3, X, Loader2, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Note } from '@/types';
@@ -55,7 +55,7 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
     if (success) {
       setNote(prev => prev ? {
         ...prev,
-        links: prev.links.filter(l => l.targetNoteId !== targetId)
+        links: prev.links?.filter(l => l.targetNoteId !== targetId) || []
       } : null);
     }
     setDeleteLinkId(null);
@@ -73,7 +73,7 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
         } else {
           alert('删除失败');
         }
-      } catch (err) {
+      } catch (_err) {
         alert('网络错误');
       }
     }

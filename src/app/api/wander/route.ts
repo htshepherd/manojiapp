@@ -2,13 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { qdrant } from "@/lib/qdrant";
-import { Note } from "@/types";
 
 const COLLECTION = process.env.QDRANT_COLLECTION!;
 
 interface WanderRequest {
   excludeIds: string[];
   lastNoteVectorId?: string;
+}
+
+interface WanderRow { // typed
+  id: string;
+  title: string;
+  content: string;
+  categoryName: string;
+  tags: string[];
+  vectorId: string;
+  createdAt: string;
+  lastViewedAt: string | null;
 }
 
 interface WanderNote {
@@ -35,8 +45,9 @@ export async function POST(request: NextRequest) {
   let userId: string;
   try {
     userId = await requireAuth(request);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Unauthorized" }, { status: error.status || 401 });
+  } catch (error: unknown) { // typed
+    const err = error as { status?: number; message?: string }; // typed
+    return NextResponse.json({ error: err.message || "Unauthorized" }, { status: err.status || 401 });
   }
 
   const { excludeIds = [], lastNoteVectorId }: WanderRequest = await request.json();
@@ -54,8 +65,8 @@ export async function POST(request: NextRequest) {
       ORDER BY last_viewed_at ASC NULLS FIRST, created_at ASC
       LIMIT 4
     `;
-    const dormantResult = await db.query(dormantQuery, [userId]);
-    const dormantNotes = dormantResult.rows.slice(0, 2).map((row: any) => {
+    const dormantResult = await db.query<WanderRow>(dormantQuery, [userId]); // typed
+    const dormantNotes = dormantResult.rows.slice(0, 2).map((row: WanderRow) => { // typed
       const lastViewedAt = row.lastViewedAt;
       const createdAt = row.createdAt;
       const days = lastViewedAt
@@ -79,8 +90,9 @@ export async function POST(request: NextRequest) {
     if (lastNoteVectorId && finalNotes.length < 5) {
       try {
         const points = await qdrant.retrieve(COLLECTION, { ids: [lastNoteVectorId], with_vector: true });
-        if (points.length > 0 && points[0].vector) {
-          const vector = points[0].vector as number[];
+        const point = points[0];
+        if (point && point.vector) {
+          const vector = point.vector as number[];
           const results = await qdrant.search(COLLECTION, {
             vector,
             filter: {
@@ -101,8 +113,8 @@ export async function POST(request: NextRequest) {
               WHERE id IN (${relatedIds.map(id => `'${id}'`).join(',')})
               LIMIT 2
             `;
-            const relatedResult = await db.query(relatedQuery);
-            relatedResult.rows.forEach((row: any) => {
+            const relatedResult = await db.query<WanderRow>(relatedQuery); // typed
+            relatedResult.rows.forEach((row: WanderRow) => { // typed
               if (finalNotes.length < 4) { // 保持比例，最多2条来自语义
                 finalNotes.push({
                   ...row,
@@ -131,8 +143,8 @@ export async function POST(request: NextRequest) {
         ORDER BY RANDOM()
         LIMIT $2
       `;
-      const randomResult = await db.query(randomQuery, [userId, remainingCount]);
-      randomResult.rows.forEach((row: any) => {
+      const randomResult = await db.query<WanderRow>(randomQuery, [userId, remainingCount]); // typed
+      randomResult.rows.forEach((row: WanderRow) => { // typed
         finalNotes.push({
           ...row,
           preview: stripMarkdown(row.content).slice(0, 120),

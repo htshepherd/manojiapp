@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, ReactNode } from "react";
 
 interface CategoryContextType {
   activeCategory: string;
-  setActiveCategory: (id: string) => void;
+  setActiveCategory: (_id: string) => void;
 }
 
 const CategoryContext = createContext<CategoryContextType | undefined>(undefined);

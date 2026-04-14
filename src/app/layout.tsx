@@ -33,7 +33,7 @@ export default function RootLayout({
       className="h-full antialiased font-sans"
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-slate-50">
+      <body className="min-h-full flex flex-col bg-slate-50" suppressHydrationWarning>
         <RootInit />
         {children}
       </body>

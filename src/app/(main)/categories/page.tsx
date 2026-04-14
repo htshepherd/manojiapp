@@ -6,7 +6,7 @@ import Link from "next/link";
 
 import { useCategoriesStore } from "@/store/categories";
 import { useTemplatesStore } from "@/store/templates";
-import { Category, Granularity } from "@/types";
+import { Category, Granularity, PromptTemplate } from "@/types";
 import { CATEGORY_COLORS } from "@/lib/relation-config";
 
 type DeleteConfirmState = { isOpen: boolean; id: string; noteCount: number } | null;
@@ -54,7 +54,7 @@ export default function CategoriesPage() {
     setEditingId(cat.id);
     setModalStep(1);
     setName(cat.name);
-    setGranularity(cat.granularity);
+    setGranularity(cat.granularity as Granularity);
     setPromptTemplate(cat.promptTemplate);
     setLinkThreshold(cat.linkThreshold);
     setSynthesisTriggerCount(cat.synthesisTriggerCount);
@@ -99,7 +99,7 @@ export default function CategoriesPage() {
     }
   };
 
-  const handleTemplateClick = (tpl: any) => {
+  const handleTemplateClick = (tpl: PromptTemplate) => {
     setPromptTemplate(tpl.promptTemplate);
   };
 

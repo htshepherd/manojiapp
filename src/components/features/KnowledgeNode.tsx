@@ -1,6 +1,6 @@
 "use client";
 
-import { Handle, Position, NodeProps } from 'react-flow-renderer';
+import { Handle, Position, NodeProps } from 'reactflow';
 import { CATEGORY_COLORS } from '@/lib/relation-config';
 
 export const KnowledgeNode = ({ data }: NodeProps) => {

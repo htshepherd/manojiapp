@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { TemplateRow } from '@/types';
 
 export async function PUT(
   req: NextRequest,
@@ -10,7 +11,7 @@ export async function PUT(
     const userId = await requireAuth(req);
     const { id } = await params;
 
-    const existing = await db.query(
+    const existing = await db.query<TemplateRow>(
       `SELECT id FROM prompt_templates WHERE id = $1 AND user_id = $2`,
       [id, userId]
     );
@@ -19,7 +20,7 @@ export async function PUT(
     }
 
     const { name, type, prompt_template, description } = await req.json();
-    const result = await db.query(
+    const result = await db.query<TemplateRow>(
       `UPDATE prompt_templates
        SET name = COALESCE($1, name),
            type = COALESCE($2, type),
@@ -30,8 +31,9 @@ export async function PUT(
       [name, type, prompt_template, description, id]
     );
     return NextResponse.json({ template: result.rows[0] });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+  } catch (err: unknown) {
+    const error = err as { message?: string; status?: number };
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });
   }
 }
 
@@ -43,7 +45,7 @@ export async function DELETE(
     const userId = await requireAuth(req);
     const { id } = await params;
 
-    const existing = await db.query(
+    const existing = await db.query<TemplateRow>(
       `SELECT id FROM prompt_templates WHERE id = $1 AND user_id = $2`,
       [id, userId]
     );
@@ -53,7 +55,8 @@ export async function DELETE(
 
     await db.query(`DELETE FROM prompt_templates WHERE id = $1`, [id]);
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+  } catch (err: unknown) {
+    const error = err as { message?: string; status?: number };
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });
   }
 }

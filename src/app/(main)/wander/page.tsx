@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Loader2, Sparkles, Inbox } from "lucide-react";
+import { ChevronLeft, Loader2, Inbox } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 
 interface WanderNote {
@@ -62,7 +62,7 @@ export default function WanderPage() {
           return next;
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("[Wander] Failed to load cards:", error);
     } finally {
       setIsLoading(false);
@@ -73,7 +73,7 @@ export default function WanderPage() {
   // 初始化加载
   useEffect(() => {
     if (token) loadMore();
-  }, [token]);
+  }, [token, loadMore]);
 
   // 预加载策略：当滑到倒数第2张时加载下一批
   useEffect(() => {
@@ -97,15 +97,20 @@ export default function WanderPage() {
   // Touch 事件处理
   const handleTouchStart = (e: React.TouchEvent) => {
     if (isAnimating) return;
-    startYRef.current = e.touches[0].clientY;
+    const touch = e.touches[0];
+    if (touch) {
+      startYRef.current = touch.clientY;
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (isAnimating) return;
-    // 阻止浏览器默认滚动
-    const delta = startYRef.current - e.touches[0].clientY;
-    if (delta > 0) {
+    const touch = e.touches[0];
+    if (touch) {
+      const delta = startYRef.current - touch.clientY;
+      if (delta > 0) {
         setOffsetY(delta);
+      }
     }
   };
 
@@ -159,6 +164,8 @@ export default function WanderPage() {
   const currentCard = cards[currentIndex];
   const nextCard = cards[currentIndex + 1];
 
+  if (!currentCard) return null; // 额外安全检查，应对 noUncheckedIndexedAccess
+
   return (
     <div 
       className="fixed inset-0 md:left-[260px] h-[100dvh] overflow-hidden bg-white z-0 select-none touch-none"
@@ -206,7 +213,7 @@ export default function WanderPage() {
       {/* 当前卡片 (顶层交互) */}
       <div 
         key={currentCard.id}
-        onClick={(e) => {
+        onClick={(_e) => {
             if (isAnimating) return;
             // 判断是否为桌面端：md 宽度以上，点击卡片切换下一条
             if (window.innerWidth >= 768) {

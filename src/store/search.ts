@@ -13,7 +13,7 @@ interface SearchResult {
 interface SearchState {
   results: SearchResult[];
   isLoading: boolean;
-  search: (query: string) => Promise<void>;
+  search: (_query: string) => Promise<void>;
 }
 
 export const useSearchStore = create<SearchState>((set) => ({

@@ -141,7 +141,6 @@ export default function MainLayout({
         bottomSheetOpen={bottomSheetOpen}
         setBottomSheetOpen={setBottomSheetOpen}
         NavContent={NavContent}
-        isLoggedIn={isLoggedIn}
       >
         {children}
       </MainLayoutContent>
@@ -155,16 +154,14 @@ function MainLayoutContent({
   setDrawerOpen,
   bottomSheetOpen,
   setBottomSheetOpen,
-  NavContent,
-  isLoggedIn
+  NavContent
 }: {
   children: React.ReactNode;
   drawerOpen: boolean;
-  setDrawerOpen: (v: boolean) => void;
+  setDrawerOpen: (_v: boolean) => void;
   bottomSheetOpen: boolean;
-  setBottomSheetOpen: (v: boolean) => void;
+  setBottomSheetOpen: (_v: boolean) => void;
   NavContent: React.ComponentType;
-  isLoggedIn: boolean;
 }) {
   const pathname = usePathname();
   const { categories } = useCategoriesStore();

@@ -7,9 +7,9 @@ interface CategoriesState {
   isLoading: boolean;
   error: string | null;
   fetchCategories: () => Promise<void>;
-  addCategory: (category: Partial<Category>) => Promise<boolean>;
-  updateCategory: (id: string, category: Partial<Category>) => Promise<boolean>;
-  deleteCategory: (id: string) => Promise<boolean>;
+  addCategory: (_category: Partial<Category>) => Promise<boolean>;
+  updateCategory: (_id: string, _category: Partial<Category>) => Promise<boolean>;
+  deleteCategory: (_id: string) => Promise<boolean>;
 }
 
 export const useCategoriesStore = create<CategoriesState>((set, get) => ({
@@ -26,7 +26,7 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
       });
       const data = await res.json();
       set({ categories: data.categories || [], isLoading: false });
-    } catch (err) {
+    } catch {
       set({ error: '获取分类失败', isLoading: false });
     }
   },

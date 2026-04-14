@@ -1,16 +1,15 @@
 import { create } from 'zustand';
 import { Synthesis } from '@/types';
-import { useAuthStore } from './auth';
 
 interface SynthesisState {
   syntheses: Record<string, Synthesis>;
   isLoading: boolean;
   error: string | null;
-  fetchSynthesis: (categoryId: string, token: string | null) => Promise<void>;
-  updateAnnotation: (categoryId: string, annotation: string, token: string | null) => Promise<boolean>;
+  fetchSynthesis: (_categoryId: string, _token: string | null) => Promise<void>;
+  updateAnnotation: (_categoryId: string, _annotation: string, _token: string | null) => Promise<boolean>;
 }
 
-export const useSynthesisStore = create<SynthesisState>((set, get) => ({
+export const useSynthesisStore = create<SynthesisState>((set, _get) => ({
   syntheses: {},
   isLoading: false,
   error: null,
@@ -39,8 +38,9 @@ export const useSynthesisStore = create<SynthesisState>((set, get) => ({
       } else {
         set({ isLoading: false });
       }
-    } catch (err: any) {
-      set({ isLoading: false, error: err.message });
+    } catch (err: unknown) { // typed
+      const error = err as Error; // typed
+      set({ isLoading: false, error: error.message }); // typed
     }
   },
 

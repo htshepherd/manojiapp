@@ -1,4 +1,4 @@
-import { QdrantClient } from '@qdrant/js-client-rest';
+import { QdrantClient } from '@qdrant/js-client-rest'; // typed
 
 declare global {
   var _qdrantClient: QdrantClient | undefined;
@@ -79,7 +79,7 @@ export async function searchSimilar(
   categoryId?: string,
   topK: number = 10
 ): Promise<Array<{ note_id: string; score: number }>> {
-  const filter: any = {
+  const filter = { // typed
     must: [{ key: 'user_id', match: { value: userId } }]
   };
   if (categoryId) {

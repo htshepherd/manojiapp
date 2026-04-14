@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import * as fs from 'fs';
 import * as path from 'path';
+import { GraphNode, GraphEdge, NoteRow, NoteLinkRow, Note } from '@/types';
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
     }
 
     const graphPath = path.resolve(outDir, 'graph.json');
-    let graphify: any = null;
+    let graphify: { nodes: GraphNode[]; edges: GraphEdge[]; generated_at: string } | null = null;
     try {
       await fs.promises.access(graphPath);
       const data = await fs.promises.readFile(graphPath, 'utf-8');
@@ -27,21 +28,23 @@ export async function GET(req: NextRequest) {
       return await fallbackFromDB(userId, categoryId);
     }
 
+    if (!graphify) return await fallbackFromDB(userId, categoryId);
+
     // 查询当前用户的有效笔记，用于过滤（跨用户隔离）
-    const userNotes = await db.query(
+    const userNotes = await db.query<NoteRow>(
       `SELECT id, category_id FROM notes WHERE user_id = $1 AND status = 'active'`,
       [userId]
     );
-    const userNoteIds = new Set(userNotes.rows.map((n: any) => n.id));
+    const userNoteIds = new Set(userNotes.rows.map(n => n.id));
 
     // 过滤出属于当前用户的节点
-    let nodes = (graphify.nodes || []).filter((n: any) => userNoteIds.has(n.id));
+    let nodes = (graphify.nodes || []).filter(n => userNoteIds.has(n.id));
 
-    const validNodeIds = new Set(nodes.map((n: any) => n.id));
+    const validNodeIds = new Set(nodes.map(n => n.id));
 
     // 过滤边（只保留两端都属于当前用户的边，且 source < target 去重）
     let edges = (graphify.edges || []).filter(
-      (e: any) =>
+      e =>
         validNodeIds.has(e.source) &&
         validNodeIds.has(e.target) &&
         e.source < e.target
@@ -50,11 +53,11 @@ export async function GET(req: NextRequest) {
     // 按分类过滤
     if (categoryId) {
       const catNodeIds = new Set(
-        nodes.filter((n: any) => n.categoryId === categoryId).map((n: any) => n.id)
+        nodes.filter(n => n.categoryId === categoryId).map(n => n.id)
       );
-      nodes = nodes.filter((n: any) => catNodeIds.has(n.id));
+      nodes = nodes.filter(n => catNodeIds.has(n.id));
       edges = edges.filter(
-        (e: any) => catNodeIds.has(e.source) || catNodeIds.has(e.target)
+        e => catNodeIds.has(e.source) || catNodeIds.has(e.target)
       );
     }
 
@@ -64,16 +67,17 @@ export async function GET(req: NextRequest) {
       generated_at: graphify.generated_at || null,
       source: 'graphify',
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
+  } catch (err: unknown) {
+    const error = err as { message?: string; status?: number };
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });
   }
 }
 
 // Fallback：Graphify 未运行时，直接从数据库构建图谱数据返回
 async function fallbackFromDB(userId: string, categoryId: string | null) {
-  const nodesResult = await db.query(
-    `SELECT n.id, n.title, n.category_id AS "categoryId", n.category_name AS "categoryName",
-            n.tags, n.created_at AS "createdAt",
+  const nodesResult = await db.query<NoteRow & { link_count: string }>(
+    `SELECT n.id, n.title, n.content, n.status, n.category_id AS "categoryId", n.category_name AS "categoryName",
+            n.tags, n.created_at AS "createdAt", n.updated_at AS "updatedAt",
             COUNT(nl.id) FILTER (WHERE nl.user_deleted = false) AS link_count
      FROM notes n
      LEFT JOIN note_links nl ON (nl.note_id = n.id OR nl.target_note_id = n.id)
@@ -82,14 +86,28 @@ async function fallbackFromDB(userId: string, categoryId: string | null) {
     [userId]
   );
 
-  let nodes = nodesResult.rows.map((n: any) => ({
-    ...n,
-    linkCount: parseInt(n.link_count) || 0,
+  let nodes: (Note & { linkCount: number })[] = nodesResult.rows.map(n => ({
+    id: n.id,
+    userId: n.user_id,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    categoryId: (n as any).categoryId, // From SQL alias
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    categoryName: (n as any).categoryName, // From SQL alias
+    title: n.title,
+    content: n.content,
+    tags: n.tags || [],
+    status: n.status,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createdAt: (n as any).createdAt, // From SQL alias
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    updatedAt: (n as any).updatedAt || n.updated_at,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    linkCount: parseInt((n as any).link_count) || 0,
   }));
 
-  const validNodeIds = new Set(nodes.map((n: any) => n.id));
+  const validNodeIds = new Set(nodes.map(n => n.id));
 
-  const edgesResult = await db.query(
+  const edgesResult = await db.query<NoteLinkRow & { source: string; target: string }>(
     `SELECT nl.id, nl.note_id AS source, nl.target_note_id AS target,
             nl.relation_type AS "relationType",
             nl.relation_confidence AS "relationConfidence",
@@ -103,13 +121,13 @@ async function fallbackFromDB(userId: string, categoryId: string | null) {
   );
 
   let edges = edgesResult.rows.filter(
-    (e: any) => validNodeIds.has(e.source) && validNodeIds.has(e.target)
+    e => validNodeIds.has(e.source) && validNodeIds.has(e.target)
   );
 
   if (categoryId) {
-    const catIds = new Set(nodes.filter((n: any) => n.categoryId === categoryId).map((n: any) => n.id));
-    nodes = nodes.filter((n: any) => catIds.has(n.id));
-    edges = edges.filter((e: any) => catIds.has(e.source) || catIds.has(e.target));
+    const catIds = new Set(nodes.filter(n => n.categoryId === categoryId).map(n => n.id));
+    nodes = nodes.filter(n => catIds.has(n.id));
+    edges = edges.filter(e => catIds.has(e.source) || catIds.has(e.target));
   }
 
   return NextResponse.json({

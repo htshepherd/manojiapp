@@ -1,26 +1,55 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import ReactFlow, { 
-  Background, 
-  Controls, 
-  useNodesState, 
-  useEdgesState, 
+import React, { useState, useCallback, useEffect } from 'react';
+import ReactFlow, {
+  Background,
+  Controls,
+  useNodesState,
+  useEdgesState,
   MarkerType,
-  ConnectionMode
-} from 'react-flow-renderer';
+  ConnectionMode,
+  Node,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAuthStore } from '@/store/auth';
 import { useCategoriesStore } from '@/store/categories';
 import { RELATION_CONFIG } from '@/lib/relation-config';
 import { KnowledgeNode } from '@/components/features/KnowledgeNode';
-import { Network, X, ArrowRight, Maximize2, Loader2, Sparkles } from 'lucide-react';
+import { Network, X, ArrowRight, Maximize2, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const nodeTypes = {
   knowledge: KnowledgeNode,
 };
+
+interface GraphNodeData {
+  id: string;
+  title: string;
+  category_name: string;
+  linkCount?: number;
+  isSelected: boolean;
+}
+
+interface GraphEdgeData {
+  source: string;
+  target: string;
+  relation_type?: string;
+  relationType?: string;
+  relation_confidence?: string;
+  relationConfidence?: string;
+  similarity_score?: number;
+  similarityScore?: number;
+}
+
+interface NoteDetail {
+  id: string;
+  title: string;
+  content: string;
+  category_name: string;
+  tags?: string[];
+}
 
 export default function GraphPage() {
   const router = useRouter();
@@ -29,11 +58,11 @@ export default function GraphPage() {
   
   // States
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
-  const [selectedNote, setSelectedNote] = useState<any | null>(null);
+  const [selectedNote, setSelectedNote] = useState<NoteDetail | null>(null);
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<GraphNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const fetchGraph = useCallback(async () => {
@@ -45,7 +74,7 @@ export default function GraphPage() {
       });
       const data = await res.json();
       
-      const rfNodes = (data.nodes || []).map((node: any, index: number) => {
+      const rfNodes = (data.nodes || []).map((node: GraphNodeData, index: number) => {
           const angle = index * (2 * Math.PI / data.nodes.length);
           // 问题 15: 去掉随机数，关联越多半径越大（确定性布局）
           const radius = 250 + (node.linkCount || 0) * 5;
@@ -63,9 +92,9 @@ export default function GraphPage() {
           };
       });
 
-      const rfEdges = (data.edges || []).map((edge: any) => {
+      const rfEdges = (data.edges || []).map((edge: GraphEdgeData) => {
         // 兼容 camelCase 和 snake_case 两种字段命名
-        const relationType = edge.relationType || edge.relation_type;
+        const relationType = edge.relationType || edge.relation_type || 'supplement';
         const confidence = edge.relationConfidence || edge.relation_confidence;
         const score = edge.similarityScore ?? edge.similarity_score ?? 0;
 
@@ -84,7 +113,7 @@ export default function GraphPage() {
               strokeDasharray: isUncertain ? '5,5' : '0'
           },
           animated: !isUncertain && score > 0.8,
-          arrowHeadType: MarkerType.ArrowClosed,
+          markerEnd: { type: MarkerType.ArrowClosed },
         };
       });
 
@@ -104,7 +133,7 @@ export default function GraphPage() {
   }, [token, filterCategoryId]); // 问题 16: 从依赖移除 fetchGraph，避免切换分类时的双重触发
 
   // Interaction
-  const onNodeClick = useCallback(async (event: any, node: any) => {
+  const onNodeClick = useCallback(async (_event: React.MouseEvent, node: Node<GraphNodeData>) => {
     setSelectedNoteId(node.id);
     setNodes((nds) => nds.map((n) => ({
       ...n,
@@ -278,13 +307,14 @@ export default function GraphPage() {
           fitViewOptions={{ padding: 0.3, duration: 1000 }}
           minZoom={0.05}
           maxZoom={3}
-          defaultZoom={0.7}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
           panOnScroll={true}
           panOnDrag={true}
           zoomOnScroll={true}
           zoomOnPinch={true}
         >
           <Background 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             variant={"dots" as any} 
             gap={32} 
             size={1.5} 

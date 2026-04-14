@@ -5,14 +5,9 @@ import { Search as SearchIcon, Loader2, Sparkles, BookText, Filter, ChevronDown 
 import Link from "next/link";
 import { useSearchStore } from "@/store/search";
 import { useCategoriesStore } from "@/store/categories";
-import { CATEGORY_COLORS } from "@/lib/relation-config";
+
 import CategoryBottomSheet from "../category-bottom-sheet";
 
-const getColorForCategory = (categoryId: string) => {
-  if (!categoryId) return "#3b82f6";
-  const num = categoryId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return CATEGORY_COLORS[num % CATEGORY_COLORS.length] || "#3b82f6";
-};
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");

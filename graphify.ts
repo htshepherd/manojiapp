@@ -12,7 +12,31 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
 import * as https from 'https';
+// @ts-expect-error - chokidar type definitions might be missing or conflicting
 import chokidar from 'chokidar'; // 替代原生 fs.watch，解决 Linux 不支持 recursive 的问题
+
+// ─── 类型定义 ─────────────────────────────────────────────────────────────
+
+interface NoteRecord {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[] | null;
+  category_id: string;
+  category_name: string;
+  vector_id: string;
+  created_at: string;
+}
+
+interface LinkRecord {
+  id: string;
+  note_id: string;
+  target_note_id: string;
+  relation_type: string;
+  relation_confidence: number;
+  similarity_score: number;
+  source_category_name: string;
+}
 
 // ─── 配置 ────────────────────────────────────────────────────────────────────
 
@@ -140,17 +164,17 @@ async function compile() {
     log(`拉取到 ${notes.length} 篇笔记，${links.length} 条连线`);
 
     // 3. 构建 graph.json
-    const nodes = notes.map((n: any) => ({
+    const nodes = (notes as NoteRecord[]).map((n) => ({
       id: n.id,
       title: n.title,
       categoryId: n.category_id,
       categoryName: n.category_name,
       tags: n.tags || [],
-      linkCount: links.filter((l: any) => l.note_id === n.id || l.target_note_id === n.id).length,
+      linkCount: (links as LinkRecord[]).filter((l) => l.note_id === n.id || l.target_note_id === n.id).length,
       createdAt: n.created_at,
     }));
 
-    const edges = links.map((l: any) => ({
+    const edges = (links as LinkRecord[]).map((l) => ({
       id: l.id,
       source: l.note_id,
       target: l.target_note_id,
@@ -176,15 +200,15 @@ async function compile() {
     log('graph.json 已生成');
 
     // 4. 按分类生成 wiki 综述 Markdown
-    const categories = new Map<string, { name: string; notes: any[] }>();
-    for (const note of notes) {
+    const categories = new Map<string, { name: string; notes: NoteRecord[] }>();
+    for (const note of (notes as NoteRecord[])) {
       if (!categories.has(note.category_id)) {
         categories.set(note.category_id, { name: note.category_name, notes: [] });
       }
       categories.get(note.category_id)!.notes.push(note);
     }
 
-    for (const [catId, cat] of categories.entries()) {
+    for (const [, cat] of categories.entries()) {
       const wikiContent = buildWikiContent(cat.name, cat.notes, links);
       const safeFileName = cat.name.replace(/[\/\\:*?"<>|]/g, '_');
       const wikiPath = path.join(OUTPUT_DIR, 'wiki', `${safeFileName}.md`);
@@ -205,12 +229,13 @@ async function compile() {
     }, WEBHOOK_SECRET);
 
     log(`编译完成 ✅ (${nodes.length} 节点, ${edges.length} 边)`);
-  } catch (err: any) {
-    log(`编译失败: ${err.message}`);
-    console.error('[Graphify Compile Error Stack]', err);
+  } catch (err: unknown) {
+    const error = err as Error;
+    log(`编译失败: ${error.message}`);
+    console.error('[Graphify Compile Error Stack]', error);
     fs.appendFileSync(
       path.join(OUTPUT_DIR, 'error.log'),
-      `[${new Date().toISOString()}] ${err.stack}\n`
+      `[${new Date().toISOString()}] ${error.stack}\n`
     );
   } finally {
     await client.end(); // 确保连接始终被释放
@@ -220,17 +245,17 @@ async function compile() {
 
 // ─── Wiki 综述生成 ────────────────────────────────────────────────────────────
 
-function buildWikiContent(categoryName: string, notes: any[], allLinks: any[]): string {
+function buildWikiContent(categoryName: string, notes: NoteRecord[], allLinks: LinkRecord[]): string {
   const now = new Date().toISOString();
-  const notesWithLinks = notes.map((note: any) => {
+  const notesWithLinks = notes.map((note) => {
     const related = allLinks.filter(
-      (l: any) => l.note_id === note.id || l.target_note_id === note.id
+      (l) => l.note_id === note.id || l.target_note_id === note.id
     );
     return { ...note, linkCount: related.length };
   });
 
   // 按关联数量排序，最有价值的节点排在前面
-  notesWithLinks.sort((a: any, b: any) => b.linkCount - a.linkCount);
+  notesWithLinks.sort((a, b) => b.linkCount - a.linkCount);
 
   let md = `# ${categoryName} · 知识综述\n\n`;
   md += `> 基于 **${notes.length}** 篇笔记自动提炼 · 更新于 ${new Date().toLocaleString('zh-CN')}\n\n`;
@@ -255,7 +280,7 @@ function buildWikiContent(categoryName: string, notes: any[], allLinks: any[]): 
 
   // 全部笔记目录（按时间倒序）
   const sortedByDate = [...notes].sort(
-    (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
   md += `## 全部笔记目录\n\n`;
   for (const note of sortedByDate) {
@@ -293,9 +318,9 @@ function extractFirstParagraph(content: string): string {
   return paragraphLines.join(' ').substring(0, 200);
 }
 
-function buildReport(graph: any): string {
+function buildReport(graph: { nodes: { title: string; categoryName: string; linkCount: number }[]; generated_at: string; node_count: number; edge_count: number }): string {
   const topNodes = [...graph.nodes]
-    .sort((a: any, b: any) => b.linkCount - a.linkCount)
+    .sort((a, b) => b.linkCount - a.linkCount)
     .slice(0, 10);
 
   let report = `# 知识图谱报告\n\n`;

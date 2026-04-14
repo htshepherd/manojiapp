@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { handleError } from '@/lib/api-response';
+import { NotePreview } from '@/types';
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '4'), 10);
 
-    const result = await db.query(
+    const result = await db.query<NotePreview>(
       `SELECT id, 
               category_id AS "categoryId", 
               category_name AS "categoryName", 
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
       [userId, limit]
     );
     return NextResponse.json({ notes: result.rows });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return handleError(err);
   }
 }

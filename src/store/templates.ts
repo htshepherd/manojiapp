@@ -1,21 +1,15 @@
 import { create } from 'zustand';
 import { useAuthStore } from './auth';
 
-export interface PromptTemplate {
-  id: string;
-  name: string;
-  type: string;
-  promptTemplate: string;
-  description?: string;
-}
+import { PromptTemplate, TemplateRow } from '@/types';
 
 interface TemplatesState {
   templates: PromptTemplate[];
   isLoading: boolean;
   fetchTemplates: () => Promise<void>;
-  addTemplate: (template: Omit<PromptTemplate, 'id'>) => Promise<boolean>;
-  updateTemplate: (id: string, template: Partial<Omit<PromptTemplate, 'id'>>) => Promise<boolean>;
-  deleteTemplate: (id: string) => Promise<boolean>;
+  addTemplate: (_template: Omit<PromptTemplate, 'id' | 'userId' | 'createdAt'>) => Promise<boolean>;
+  updateTemplate: (_id: string, _template: Partial<Omit<PromptTemplate, 'id' | 'userId' | 'createdAt'>>) => Promise<boolean>;
+  deleteTemplate: (_id: string) => Promise<boolean>;
 }
 
 export const useTemplatesStore = create<TemplatesState>((set, get) => ({
@@ -31,12 +25,14 @@ export const useTemplatesStore = create<TemplatesState>((set, get) => ({
       });
       const data = await res.json();
       // Map backend snake_case to frontend camelCase
-      const mapped = (data.templates || []).map((t: any) => ({
+      const mapped = (data.templates || []).map((t: TemplateRow) => ({ // typed
         id: t.id,
+        userId: t.user_id,
         name: t.name,
         type: t.type,
         promptTemplate: t.prompt_template,
-        description: t.description
+        description: t.description || undefined,
+        createdAt: t.created_at
       }));
       set({ templates: mapped, isLoading: false });
     } catch {

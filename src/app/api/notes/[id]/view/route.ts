@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import { handleError } from "@/lib/api-response";
 
 export async function POST(
   request: NextRequest,
@@ -9,8 +10,9 @@ export async function POST(
   let userId: string;
   try {
     userId = await requireAuth(request);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Unauthorized" }, { status: error.status || 401 });
+  } catch (error: unknown) {
+    const err = error as { message?: string; status?: number };
+    return NextResponse.json({ error: err.message || "Unauthorized" }, { status: err.status || 401 });
   }
 
   const { id } = await params;
@@ -27,8 +29,8 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`[API/view] Error updating last_viewed_at for note ${id}:`, error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return handleError(error);
   }
 }

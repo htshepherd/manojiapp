@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { embedText, searchSimilar } from '@/lib/qdrant';
-import { generatePreview } from '@/lib/text';
 import { z } from 'zod';
 import { handleError } from '@/lib/api-response';
+import { NoteRow } from '@/types';
 
 const SearchSchema = z.object({
   query: z.string().min(1).max(6000),
@@ -44,20 +44,20 @@ export async function POST(req: NextRequest) {
 
     // 批量查询 PostgreSQL
     const noteIds = qdrantResults.map(r => r.note_id);
-    const dbResult = await db.query(
+    const dbResult = await db.query<NoteRow>(
       `SELECT id, title, content, tags, category_id, category_name, created_at
        FROM notes
        WHERE id = ANY($1) AND status = 'active' AND user_id = $2`,
       [noteIds, userId]
     );
 
-    const noteMap = new Map(dbResult.rows.map((n: any) => [n.id, n]));
+    const noteMap = new Map(dbResult.rows.map((n: NoteRow) => [n.id, n]));
 
     // 按 Qdrant score 顺序排列
     const results = qdrantResults
       .filter(r => noteMap.has(r.note_id))
       .map(r => {
-        const note = noteMap.get(r.note_id);
+        const note = noteMap.get(r.note_id)!;
         return {
           id: note.id,
           title: note.title,
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       });
 
     return NextResponse.json({ results });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return handleError(err);
   }
 }
